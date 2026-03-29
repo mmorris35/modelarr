@@ -1,12 +1,10 @@
 """Tests for Telegram notification module."""
 
 from datetime import UTC, datetime
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from modelarr.db import init_db
-from modelarr.models import DownloadRecord, ModelInfo, WatchlistEntry, WatchlistFilters
+from modelarr.models import DownloadRecord, ModelInfo, WatchlistEntry
 from modelarr.notifier import TelegramNotifier
 from modelarr.store import ModelarrStore
 

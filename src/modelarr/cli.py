@@ -1,7 +1,6 @@
 """Typer CLI application for modelarr."""
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -90,16 +89,16 @@ def add(
         ..., help="Type of watch: model, author, query, or family"
     ),
     value: str = typer.Argument(..., help="Value to watch"),
-    format_: Optional[str] = typer.Option(
+    format_: str | None = typer.Option(
         None, "--format", "-f", help="Filter by format (e.g., gguf, mlx)"
     ),
-    quant: Optional[str] = typer.Option(
+    quant: str | None = typer.Option(
         None, "--quant", "-q", help="Filter by quantization (e.g., 4bit, 8bit)"
     ),
-    min_size: Optional[int] = typer.Option(
+    min_size: int | None = typer.Option(
         None, "--min-size", help="Minimum size in GB"
     ),
-    max_size: Optional[int] = typer.Option(
+    max_size: int | None = typer.Option(
         None, "--max-size", help="Maximum size in GB"
     ),
 ) -> None:
@@ -178,8 +177,8 @@ def watch_list(enabled_only: bool = typer.Option(False, "--enabled-only", "-e"))
         raise typer.Exit(code=1)
 
 
-@watch_app.command()
-def remove(watch_id: int = typer.Argument(..., help="ID of watch to remove")) -> None:
+@watch_app.command("remove")
+def watch_remove(watch_id: int = typer.Argument(..., help="ID of watch to remove")) -> None:
     """Remove a watchlist entry."""
     try:
         store = _get_store()
@@ -217,7 +216,7 @@ def toggle(watch_id: int = typer.Argument(..., help="ID of watch to toggle")) ->
 
 @library_app.command("list")
 def library_list(
-    format_filter: Optional[str] = typer.Option(
+    format_filter: str | None = typer.Option(
         None, "--format", "-f", help="Filter by format"
     ),
     sort: str = typer.Option(
@@ -382,8 +381,8 @@ def cmd_download_model(
         raise typer.Exit(code=1)
 
 
-@download_app.command()
-def status() -> None:
+@download_app.command("status")
+def download_status() -> None:
     """Show download status."""
     try:
         store = _get_store()
@@ -402,7 +401,9 @@ def status() -> None:
             for dl in active:
                 if dl.total_bytes and dl.total_bytes > 0:
                     pct = (dl.bytes_downloaded or 0) / dl.total_bytes * 100
-                    progress = f"{pct:.1f}% ({_format_bytes(dl.bytes_downloaded)} / {_format_bytes(dl.total_bytes)})"
+                    downloaded_str = _format_bytes(dl.bytes_downloaded)
+                    total_str = _format_bytes(dl.total_bytes)
+                    progress = f"{pct:.1f}% ({downloaded_str} / {total_str})"
                 else:
                     progress = "—"
 
@@ -528,14 +529,14 @@ def stop() -> None:
         raise typer.Exit(code=1)
 
 
-@monitor_app.command()
-def status() -> None:
+@monitor_app.command("status")
+def monitor_status() -> None:
     """Show monitor status."""
     try:
         store = _get_store()
         interval = store.get_config("interval_minutes", "60")
 
-        console.print(f"[cyan]Monitor Status:[/cyan]")
+        console.print("[cyan]Monitor Status:[/cyan]")
         console.print(f"  Interval: {interval} minutes")
 
         watches = store.list_watches(enabled_only=True)
@@ -573,7 +574,7 @@ def check() -> None:
 
         if results:
             console.print(f"[green]✓[/green] Downloaded {len(results)} model(s)")
-            for watch, model in results:
+            for _watch, model in results:
                 console.print(
                     f"  - {model.author}/{model.name} ({_format_bytes(model.size_bytes)})"
                 )

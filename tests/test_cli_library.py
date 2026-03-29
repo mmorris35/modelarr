@@ -1,13 +1,11 @@
 """Tests for library and download CLI commands."""
 
 from datetime import UTC, datetime
-from pathlib import Path
 
 from typer.testing import CliRunner
 
 from modelarr.cli import app
 from modelarr.db import init_db
-from modelarr.models import ModelInfo
 from modelarr.store import ModelarrStore
 
 runner = CliRunner()

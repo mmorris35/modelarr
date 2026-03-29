@@ -1,13 +1,9 @@
 """Tests for storage management module."""
 
 from datetime import UTC, datetime
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from modelarr.db import init_db
-from modelarr.models import ModelRecord
 from modelarr.storage import StorageManager
 from modelarr.store import ModelarrStore
 
@@ -134,7 +130,7 @@ class TestStorageManager:
 
         # Create models with different timestamps
         now = datetime.now(UTC)
-        model1 = store.upsert_model(
+        store.upsert_model(
             repo_id="test/model1",
             author="test",
             name="model1",
@@ -142,7 +138,7 @@ class TestStorageManager:
             downloaded_at=now,
             local_path=str(tmp_path / "test" / "model1"),
         )
-        model2 = store.upsert_model(
+        store.upsert_model(
             repo_id="test/model2",
             author="test",
             name="model2",

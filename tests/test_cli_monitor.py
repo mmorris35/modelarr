@@ -1,7 +1,8 @@
 """Tests for monitor and config CLI commands."""
 
+from unittest.mock import MagicMock, patch
+
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock
 
 from modelarr.cli import app
 from modelarr.db import init_db
