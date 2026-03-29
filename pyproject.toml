@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "modelarr"
+version = "0.1.0"
+description = "Radarr/Sonarr for LLM models. Monitors HuggingFace for new releases matching a watchlist and auto-downloads them to a local library."
+authors = [
+    {name = "Mike", email = "mike@example.com"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "huggingface-hub>=0.25",
+    "apscheduler>=3.10",
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+modelarr = "modelarr.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/modelarr"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
