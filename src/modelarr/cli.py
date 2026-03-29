@@ -128,7 +128,7 @@ def add(
         )
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @watch_app.command("list")
@@ -174,7 +174,7 @@ def watch_list(enabled_only: bool = typer.Option(False, "--enabled-only", "-e"))
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @watch_app.command("remove")
@@ -186,10 +186,10 @@ def watch_remove(watch_id: int = typer.Argument(..., help="ID of watch to remove
             console.print(f"[green]✓[/green] Removed watch ID {watch_id}")
         else:
             console.print(f"[red]Error:[/red] Watch ID {watch_id} not found")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @watch_app.command()
@@ -203,10 +203,10 @@ def toggle(watch_id: int = typer.Argument(..., help="ID of watch to toggle")) ->
             console.print(f"[green]✓[/green] Watch ID {watch_id} {status}")
         else:
             console.print(f"[red]Error:[/red] Watch ID {watch_id} not found")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # ============================================================================
@@ -275,7 +275,7 @@ def library_list(
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @library_app.command()
@@ -297,7 +297,7 @@ def size() -> None:
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @library_app.command()
@@ -320,7 +320,7 @@ def remove(
             console.print(
                 f"[red]Error:[/red] Model {repo_id} not found or not downloaded"
             )
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
         if not confirm:
             console.print(
@@ -334,11 +334,11 @@ def remove(
             console.print(f"[green]✓[/green] Deleted {repo_id}")
         else:
             console.print(f"[red]Error:[/red] Failed to delete {repo_id}")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # ============================================================================
@@ -374,11 +374,11 @@ def cmd_download_model(
             console.print(
                 f"[red]✗[/red] Download failed: {download.error}"
             )
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @download_app.command("status")
@@ -446,7 +446,7 @@ def download_status() -> None:
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # ============================================================================
@@ -498,35 +498,21 @@ def start(
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @monitor_app.command()
 def stop() -> None:
     """Stop the monitoring scheduler."""
     try:
-        store = _get_store()
-        hf_client = HFClient(token=store.get_config("huggingface_token"))
-        matcher = WatchlistMatcher(hf_client)
-        downloader = DownloadManager(
-            store=store,
-            library_path=Path(store.get_config("library_path") or "~/.modelarr/library"),
-            hf_token=store.get_config("huggingface_token"),
-        )
-
-        monitor = ModelarrMonitor(
-            store=store,
-            matcher=matcher,
-            downloader=downloader,
-            notifier=None,
-        )
-
-        monitor.stop()
-        console.print("[green]✓[/green] Monitor stopped")
+        if ModelarrMonitor.stop_by_pid():
+            console.print("[green]✓[/green] Monitor stopped")
+        else:
+            console.print("[yellow]No running monitor found[/yellow]")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @monitor_app.command("status")
@@ -536,7 +522,11 @@ def monitor_status() -> None:
         store = _get_store()
         interval = store.get_config("interval_minutes", "60")
 
+        is_running = ModelarrMonitor.is_running()
+        status = "[green]Running[/green]" if is_running else "[yellow]Stopped[/yellow]"
+
         console.print("[cyan]Monitor Status:[/cyan]")
+        console.print(f"  Status: {status}")
         console.print(f"  Interval: {interval} minutes")
 
         watches = store.list_watches(enabled_only=True)
@@ -544,7 +534,7 @@ def monitor_status() -> None:
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @monitor_app.command()
@@ -583,7 +573,7 @@ def check() -> None:
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 # ============================================================================
@@ -603,7 +593,7 @@ def config_set(
         console.print(f"[green]✓[/green] Set {key} = {value}")
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
 
 @config_app.command()
@@ -639,4 +629,4 @@ def show() -> None:
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None

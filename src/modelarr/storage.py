@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from modelarr.downloader import DownloadManager
 from modelarr.models import ModelRecord
 from modelarr.store import ModelarrStore
 
@@ -68,6 +67,9 @@ class StorageManager:
 
             if model.local_path:
                 try:
+                    # Avoid circular import by importing here
+                    from modelarr.downloader import DownloadManager
+
                     # Try to delete the model
                     downloader = DownloadManager(
                         store=self.store,

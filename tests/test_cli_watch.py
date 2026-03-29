@@ -2,7 +2,9 @@
 
 from typer.testing import CliRunner
 
+import modelarr.cli
 from modelarr.cli import app
+from modelarr.db import init_db
 from modelarr.store import ModelarrStore
 
 runner = CliRunner()
@@ -11,9 +13,6 @@ runner = CliRunner()
 def test_watch_add_model(tmp_path):
     """Test adding a model watch."""
     # Override db path for test
-    import modelarr.cli
-
-    from modelarr.db import init_db
 
     db_path = tmp_path / "test.db"
     init_db(db_path)

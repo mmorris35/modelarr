@@ -121,7 +121,7 @@ class TestStorageManager:
 
         assert manager.check_space(5 * (1024**3))
 
-    @patch("modelarr.storage.DownloadManager")
+    @patch("modelarr.downloader.DownloadManager")
     def test_prune_oldest(self, mock_dm_class, tmp_path):
         """Test pruning oldest models."""
         db_path = tmp_path / "test.db"
@@ -165,7 +165,7 @@ class TestStorageManager:
         assert len(deleted) >= 1
         assert any(m.repo_id == "test/model1" for m in deleted)
 
-    @patch("modelarr.storage.DownloadManager")
+    @patch("modelarr.downloader.DownloadManager")
     def test_prune_oldest_stops_when_done(self, mock_dm_class, tmp_path):
         """Test pruning stops after freeing enough space."""
         db_path = tmp_path / "test.db"
@@ -355,7 +355,7 @@ class TestStorageManager:
         assert usage["total_bytes"] == 0
         assert usage["model_count"] == 1
 
-    @patch("modelarr.storage.DownloadManager")
+    @patch("modelarr.downloader.DownloadManager")
     def test_prune_oldest_handles_deletion_failure(self, mock_dm_class, tmp_path):
         """Test prune_oldest handles deletion failures gracefully."""
         db_path = tmp_path / "test.db"

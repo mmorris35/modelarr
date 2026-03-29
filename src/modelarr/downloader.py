@@ -8,6 +8,7 @@ from typing import Any
 from huggingface_hub import snapshot_download
 
 from modelarr.models import DownloadRecord, ModelInfo, ModelRecord
+from modelarr.storage import StorageManager
 from modelarr.store import ModelarrStore
 
 
@@ -15,7 +16,11 @@ class DownloadManager:
     """Manages model downloads from HuggingFace with resume support and library tracking."""
 
     def __init__(
-        self, store: ModelarrStore, library_path: Path, hf_token: str | None = None
+        self,
+        store: ModelarrStore,
+        library_path: Path,
+        hf_token: str | None = None,
+        storage_manager: StorageManager | None = None,
     ) -> None:
         """Initialize the download manager.
 
@@ -23,11 +28,13 @@ class DownloadManager:
             store: ModelarrStore instance for database operations
             library_path: Root path for the local model library
             hf_token: Optional HuggingFace API token for authenticated downloads
+            storage_manager: Optional StorageManager for disk limit enforcement
         """
         self.store = store
         self.library_path = Path(library_path)
         self.library_path.mkdir(parents=True, exist_ok=True)
         self.hf_token = hf_token
+        self.storage_manager = storage_manager
 
     def download_model(
         self, model: ModelInfo, watch: Any = None
@@ -63,13 +70,36 @@ class DownloadManager:
         )
 
         try:
+            # Check storage limits if StorageManager is configured
+            if (
+                self.storage_manager is not None
+                and not self.storage_manager.check_space(model.size_bytes or 0)
+            ):
+                # Over limit - try to prune if auto_prune is enabled
+                config_auto_prune = self.store.get_config("storage_auto_prune", "false")
+                if config_auto_prune.lower() == "true":
+                    self.storage_manager.prune_oldest(model.size_bytes or 0)
+                    # Check again after pruning
+                    if not self.storage_manager.check_space(model.size_bytes or 0):
+                        error_msg = (
+                            f"Insufficient storage for {model.repo_id} "
+                            f"({model.size_bytes} bytes)"
+                        )
+                        raise RuntimeError(error_msg)
+                else:
+                    error_msg = (
+                        f"Insufficient storage for {model.repo_id} "
+                        f"({model.size_bytes} bytes)"
+                    )
+                    raise RuntimeError(error_msg)
+
             # Update to downloading status
             download = self.store.update_download(
                 download.id,
                 status="downloading",
             )
             if download is None:
-                raise RuntimeError(f"Failed to update download {download.id}")
+                raise RuntimeError("Failed to update download status")
 
             # Create local path: library_path / author / model_name
             local_path = self.library_path / model.author / model.name
@@ -108,7 +138,7 @@ class DownloadManager:
             )
 
             if download is None:
-                raise RuntimeError(f"Failed to complete download {download.id}")
+                raise RuntimeError("Failed to complete download")
 
             return download
 
