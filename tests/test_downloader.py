@@ -64,7 +64,7 @@ def test_download_manager_with_token(library_path, tmp_db):
 def test_download_model_success(mock_stream, downloader, sample_model):
     """Test successful model download."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("fake model data")
         return len("fake model data")
@@ -99,7 +99,7 @@ def test_download_model_creates_directory_structure(
 ):
     """Test that download creates correct directory structure."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")
@@ -132,7 +132,7 @@ def test_download_model_failure(mock_stream, downloader, sample_model):
 def test_download_model_lifecycle(mock_stream, downloader, sample_model):
     """Test download lifecycle transitions."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")
@@ -154,7 +154,7 @@ def test_download_model_lifecycle(mock_stream, downloader, sample_model):
 def test_get_library_size(mock_stream, downloader, sample_model):
     """Test library size calculation."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_bytes(b"x" * 500000)
         return 500000
@@ -179,7 +179,7 @@ def test_list_local_models_empty(downloader):
 def test_list_local_models_with_downloads(mock_stream, downloader, sample_model):
     """Test listing downloaded models."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")
@@ -206,7 +206,7 @@ def test_delete_local_model_not_found(downloader):
 def test_delete_local_model_success(mock_stream, downloader, sample_model):
     """Test successful model deletion."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")
@@ -258,7 +258,7 @@ def test_download_model_token_passed(mock_stream, downloader, sample_model):
         downloader.store, downloader.library_path, hf_token=token
     )
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")
@@ -275,7 +275,7 @@ def test_download_model_token_passed(mock_stream, downloader, sample_model):
 def test_download_model_updates_model_record(mock_stream, downloader, sample_model):
     """Test that model record is properly updated after download."""
 
-    def create_file(repo_id, filename, local_dir, token=None):
+    def create_file(repo_id, filename, local_dir, token=None, progress_cb=None):
         local_dir.mkdir(parents=True, exist_ok=True)
         (local_dir / filename).write_text("data")
         return len("data")

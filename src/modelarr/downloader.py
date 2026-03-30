@@ -30,16 +30,23 @@ def _get_available_memory_mb() -> int | None:
     return None
 
 
+_PROGRESS_INTERVAL = 10 * 1024 * 1024  # Update DB every 10MB
+
+
 def _stream_download(
     repo_id: str,
     filename: str,
     local_dir: Path,
     token: str | None = None,
+    progress_cb: Any | None = None,
 ) -> int:
     """Download a single file from HuggingFace via streaming HTTP.
 
     Streams in 1MB chunks to keep memory usage constant regardless of
     file size. Supports resume via HTTP Range headers.
+
+    Args:
+        progress_cb: Optional callable(bytes_delta) called every ~10MB
 
     Returns:
         Number of bytes downloaded (new bytes, not including resumed portion)
@@ -58,7 +65,10 @@ def _stream_download(
         headers["Range"] = f"bytes={existing_size}-"
 
     bytes_downloaded = 0
-    with httpx.stream("GET", url, headers=headers, follow_redirects=True, timeout=300) as resp:
+    since_last_update = 0
+    with httpx.stream(
+        "GET", url, headers=headers, follow_redirects=True, timeout=300
+    ) as resp:
         if resp.status_code == 416:
             # Range not satisfiable — file already complete
             return 0
@@ -69,6 +79,15 @@ def _stream_download(
             for chunk in resp.iter_bytes(chunk_size=_CHUNK_SIZE):
                 f.write(chunk)
                 bytes_downloaded += len(chunk)
+                since_last_update += len(chunk)
+
+                if progress_cb and since_last_update >= _PROGRESS_INTERVAL:
+                    progress_cb(since_last_update)
+                    since_last_update = 0
+
+    # Flush any remaining progress
+    if progress_cb and since_last_update > 0:
+        progress_cb(since_last_update)
 
     return bytes_downloaded
 
@@ -173,6 +192,17 @@ class DownloadManager:
             )
             bytes_so_far = 0
             total_bytes = model.size_bytes or 0
+            download_id = download.id
+            store = self.store
+
+            def on_progress(bytes_delta: int) -> None:
+                nonlocal bytes_so_far
+                bytes_so_far += bytes_delta
+                store.update_download(
+                    download_id,
+                    bytes_downloaded=bytes_so_far,
+                    total_bytes=total_bytes,
+                )
 
             for file_info in model.files:
                 filename = file_info.get("name", "")
@@ -194,16 +224,7 @@ class DownloadManager:
                     filename=filename,
                     local_dir=local_path,
                     token=self.hf_token,
-                )
-
-                # Update progress after each file
-                file_size = file_info.get("size", 0)
-                if isinstance(file_size, int):
-                    bytes_so_far += file_size
-                self.store.update_download(
-                    download.id,
-                    bytes_downloaded=bytes_so_far,
-                    total_bytes=total_bytes,
+                    progress_cb=on_progress,
                 )
 
             # Calculate actual downloaded size
