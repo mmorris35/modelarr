@@ -1,13 +1,13 @@
 """Watchlist routes for modelarr web UI."""
 
 from fastapi import APIRouter, Depends, Request
-from jinja2 import Template
+from fastapi.responses import HTMLResponse
 
 from modelarr.models import WatchlistFilters
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import get_store
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/watchlist")
@@ -20,7 +20,7 @@ async def watchlist_page(
 
     template = request.app.jinja_env.get_template("watchlist.html")
     html = template.render(watches=watches)
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.post("/watchlist")
@@ -55,7 +55,7 @@ async def add_watch(
         # Render the new row as htmx partial
         template = request.app.jinja_env.get_template("partials/watch_row.html")
         html = template.render(watch=entry)
-        return Template(html).render()
+        return HTMLResponse(html)
 
     except Exception as e:
         return f"<tr><td colspan='6'>Error: {str(e)}</td></tr>"
@@ -84,5 +84,5 @@ async def toggle_watch(
     if entry:
         template = request.app.jinja_env.get_template("partials/watch_row.html")
         html = template.render(watch=entry)
-        return Template(html).render()
+        return HTMLResponse(html)
     return ""

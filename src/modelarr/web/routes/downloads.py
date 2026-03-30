@@ -2,7 +2,7 @@
 
 
 from fastapi import APIRouter, Depends, Request
-from jinja2 import Template
+from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.hf_client import HFClient
@@ -22,7 +22,7 @@ def _toast_html(message: str, is_error: bool = False) -> str:
     )
 
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/downloads")
@@ -41,7 +41,7 @@ async def downloads_page(
         history=history,
         format_bytes=format_bytes,
     )
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.get("/downloads/active")
@@ -54,7 +54,7 @@ async def active_downloads(
 
     template = request.app.jinja_env.get_template("partials/active_downloads.html")
     html = template.render(active_downloads=active, format_bytes=format_bytes)
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.post("/downloads")

@@ -1,7 +1,7 @@
 """Settings routes for modelarr web UI."""
 
 from fastapi import APIRouter, Depends, Request
-from jinja2 import Template
+from fastapi.responses import HTMLResponse
 
 from modelarr.notifier import TelegramNotifier
 from modelarr.store import ModelarrStore
@@ -20,7 +20,7 @@ def _toast_html(message: str, is_error: bool = False) -> str:
     )
 
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/settings")
@@ -47,7 +47,7 @@ async def settings_page(
         telegram_bot_token=telegram_bot_token,
         telegram_chat_id=telegram_chat_id,
     )
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.post("/settings")

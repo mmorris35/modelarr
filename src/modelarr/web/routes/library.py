@@ -2,12 +2,13 @@
 
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_store
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/library")
@@ -50,8 +51,7 @@ async def library_page(
         sort=sort,
         format_filter=format_filter,
     )
-    from jinja2 import Template
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.delete("/library/{repo_id:path}")

@@ -2,7 +2,7 @@
 
 
 from fastapi import APIRouter, Depends, Request
-from jinja2 import Template
+from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.hf_client import HFClient
@@ -23,7 +23,7 @@ def _toast_html(message: str, is_error: bool = False) -> str:
     )
 
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/search")
@@ -35,7 +35,7 @@ async def search_page(
     """Render the search page with optional query param."""
     template = request.app.jinja_env.get_template("search.html")
     html = template.render(query=q or "")
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.get("/search/results")
@@ -56,7 +56,7 @@ async def search_results(
 
         template = request.app.jinja_env.get_template("partials/search_results.html")
         html = template.render(results=results, format_bytes=format_bytes)
-        return Template(html).render()
+        return HTMLResponse(html)
 
     except Exception as e:
         return f'<p style="color: var(--form-element-invalid-border-color);">Error: {str(e)}</p>'
@@ -74,7 +74,7 @@ async def model_detail(
 
         template = request.app.jinja_env.get_template("partials/model_detail.html")
         html = template.render(model=model, format_bytes=format_bytes)
-        return Template(html).render()
+        return HTMLResponse(html)
 
     except Exception as e:
         return f'<p style="color: var(--form-element-invalid-border-color);">Error: {str(e)}</p>'

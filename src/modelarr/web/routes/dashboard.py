@@ -2,7 +2,7 @@
 
 
 from fastapi import APIRouter, Depends, Request
-from jinja2 import Template
+from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.store import ModelarrStore
@@ -21,7 +21,7 @@ def _toast_html(message: str, is_error: bool = False) -> str:
     )
 
 
-router = APIRouter()
+router = APIRouter(default_response_class=HTMLResponse)
 
 
 @router.get("/")
@@ -73,7 +73,7 @@ async def dashboard(
         active_downloads=active_downloads,
         recent=recent,
     )
-    return Template(html).render()
+    return HTMLResponse(html)
 
 
 @router.post("/dashboard/check")
@@ -127,9 +127,9 @@ async def dashboard_check(
                 " No new models found.</div>"
             )
 
-        return Template(html).render()
+        return HTMLResponse(html)
 
     except Exception as e:
         msg = f"<strong>Error:</strong> {str(e)}"
         html = _toast_html(msg, is_error=True)
-        return Template(html).render()
+        return HTMLResponse(html)
