@@ -1,12 +1,45 @@
 """Dashboard routes for modelarr web UI."""
 
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
+from modelarr.models import DownloadRecord
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_store
+
+_local_tz = datetime.now(UTC).astimezone().tzinfo
+
+
+def _enrich(dl: DownloadRecord, store: ModelarrStore) -> dict:
+    """Add model name and local times to a download record."""
+    model = store.get_model_by_id(dl.model_id) if dl.model_id else None
+    repo_id = model.repo_id if model else f"model #{dl.model_id}"
+    started = (
+        dl.started_at.replace(tzinfo=UTC).astimezone(_local_tz)
+        if dl.started_at else None
+    )
+    completed = (
+        dl.completed_at.replace(tzinfo=UTC).astimezone(_local_tz)
+        if dl.completed_at else None
+    )
+    pct = 0.0
+    if dl.total_bytes and dl.total_bytes > 0 and dl.bytes_downloaded:
+        pct = (dl.bytes_downloaded / dl.total_bytes) * 100
+    return {
+        "repo_id": repo_id,
+        "status": dl.status,
+        "bytes_downloaded": dl.bytes_downloaded,
+        "total_bytes": dl.total_bytes,
+        "pct": pct,
+        "started_at": started,
+        "completed_at": completed,
+        "error": dl.error,
+        "size": format_bytes(dl.total_bytes),
+    }
 
 
 def _toast_html(message: str, is_error: bool = False) -> str:
@@ -54,10 +87,10 @@ async def dashboard(
     enabled_watch_count = len(watches)
 
     # Active downloads
-    active_downloads = store.get_active_downloads()
+    active_downloads = [_enrich(dl, store) for dl in store.get_active_downloads()]
 
     # Recent activity (last 5 completed/failed)
-    recent = store.get_download_history(limit=5)
+    recent = [_enrich(dl, store) for dl in store.get_download_history(limit=5)]
 
     # Render template
     template = request.app.jinja_env.get_template("dashboard.html")
@@ -72,6 +105,7 @@ async def dashboard(
         enabled_watch_count=enabled_watch_count,
         active_downloads=active_downloads,
         recent=recent,
+        format_bytes=format_bytes,
     )
     return HTMLResponse(html)
 
