@@ -39,6 +39,10 @@ def sample_model():
         format="gguf",
         quantization="Q4_K_M",
         size_bytes=5000000000,
+        files=[
+            {"name": "model.gguf", "size": 4999999000},
+            {"name": "config.json", "size": 1000},
+        ],
     )
 
 
@@ -56,16 +60,16 @@ def test_download_manager_with_token(library_path, tmp_db):
     assert downloader.hf_token == token
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_download_model_success(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_download_model_success(mock_hf_download, downloader, sample_model):
     """Test successful model download."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("fake model data")
+        (path / filename).write_text("fake model data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     # Download the model
     result = downloader.download_model(sample_model)
@@ -77,11 +81,10 @@ def test_download_model_success(mock_snapshot, downloader, sample_model):
     assert result.completed_at is not None
     assert result.error is None
 
-    # Verify snapshot_download was called with resume_download=True
-    mock_snapshot.assert_called_once()
-    call_kwargs = mock_snapshot.call_args[1]
-    assert call_kwargs["resume_download"] is True
-    assert call_kwargs["repo_id"] == sample_model.repo_id
+    # Verify hf_hub_download was called for each file
+    assert mock_hf_download.call_count == len(sample_model.files)
+    first_call_kwargs = mock_hf_download.call_args_list[0][1]
+    assert first_call_kwargs["repo_id"] == sample_model.repo_id
 
     # Verify model record was created
     model = downloader.store.get_model_by_repo(sample_model.repo_id)
@@ -90,18 +93,18 @@ def test_download_model_success(mock_snapshot, downloader, sample_model):
     assert Path(model.local_path).exists()
 
 
-@patch("modelarr.downloader.snapshot_download")
+@patch("modelarr.downloader.hf_hub_download")
 def test_download_model_creates_directory_structure(
-    mock_snapshot, downloader, sample_model
+    mock_hf_download, downloader, sample_model
 ):
     """Test that download creates correct directory structure."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     downloader.download_model(sample_model)
 
@@ -111,10 +114,11 @@ def test_download_model_creates_directory_structure(
     assert (expected_path / "model.gguf").exists()
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_download_model_failure(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_download_model_failure(mock_hf_download, downloader, sample_model):
     """Test handling of download failure."""
-    mock_snapshot.side_effect = Exception("Network error")
+    mock_hf_download.side_effect = Exception("Network error")
+    sample_model.files = [{"name": "model.gguf", "size": 1000}]
 
     result = downloader.download_model(sample_model)
 
@@ -124,16 +128,16 @@ def test_download_model_failure(mock_snapshot, downloader, sample_model):
     assert result.completed_at is not None
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_download_model_lifecycle(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_download_model_lifecycle(mock_hf_download, downloader, sample_model):
     """Test download lifecycle transitions."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     download_rec = downloader.download_model(sample_model)
 
@@ -146,16 +150,16 @@ def test_download_model_lifecycle(mock_snapshot, downloader, sample_model):
     assert retrieved.status == "complete"
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_get_library_size(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_get_library_size(mock_hf_download, downloader, sample_model):
     """Test library size calculation."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_bytes(b"x" * 1000000)  # 1MB
+        (path / filename).write_bytes(b"x" * 500000)  # 500KB per file
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     # Download a model
     downloader.download_model(sample_model)
@@ -171,16 +175,16 @@ def test_list_local_models_empty(downloader):
     assert models == []
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_list_local_models_with_downloads(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_list_local_models_with_downloads(mock_hf_download, downloader, sample_model):
     """Test listing downloaded models."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     # Download a model
     downloader.download_model(sample_model)
@@ -198,16 +202,16 @@ def test_delete_local_model_not_found(downloader):
     assert result is False
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_delete_local_model_success(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_delete_local_model_success(mock_hf_download, downloader, sample_model):
     """Test successful model deletion."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     # Download a model
     downloader.download_model(sample_model)
@@ -246,37 +250,37 @@ def test_calculate_directory_size(tmp_path):
     assert size == 3500
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_download_model_token_passed(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_download_model_token_passed(mock_hf_download, downloader, sample_model):
     """Test that HF token is passed to snapshot_download."""
     token = "test-hf-token"
     downloader_with_token = DownloadManager(
         downloader.store, downloader.library_path, hf_token=token
     )
 
-    def create_files(repo_id, local_dir, resume_download, token_arg, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
     downloader_with_token.download_model(sample_model)
 
-    # Verify token was passed
-    call_kwargs = mock_snapshot.call_args[1]
-    assert call_kwargs["token"] == token
+    # Verify token was passed to each hf_hub_download call
+    for call in mock_hf_download.call_args_list:
+        assert call[1]["token"] == token
 
 
-@patch("modelarr.downloader.snapshot_download")
-def test_download_model_updates_model_record(mock_snapshot, downloader, sample_model):
+@patch("modelarr.downloader.hf_hub_download")
+def test_download_model_updates_model_record(mock_hf_download, downloader, sample_model):
     """Test that model record is properly updated after download."""
 
-    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
+    def create_file(repo_id, filename, local_dir, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
-        (path / "model.gguf").write_text("data")
+        (path / filename).write_text("data")
 
-    mock_snapshot.side_effect = create_files
+    mock_hf_download.side_effect = create_file
 
     downloader.download_model(sample_model)
 

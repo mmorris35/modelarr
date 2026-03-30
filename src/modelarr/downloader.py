@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download
 
 from modelarr.models import DownloadRecord, ModelInfo, ModelRecord
 from modelarr.storage import StorageManager
@@ -121,29 +121,44 @@ class DownloadManager:
             local_path = self.library_path / model.author / model.name
             local_path.mkdir(parents=True, exist_ok=True)
 
-            # Check memory guard before downloading
+            # Download files one at a time for low memory footprint
             min_free_mb = int(
                 self.store.get_config("min_free_memory_mb", "200") or "200"
             )
-            if min_free_mb > 0:
-                avail = _get_available_memory_mb()
-                if avail is not None and avail < min_free_mb:
-                    raise RuntimeError(
-                        f"Insufficient memory: {avail}MB available, "
-                        f"{min_free_mb}MB required (configurable via min_free_memory_mb)"
-                    )
+            bytes_so_far = 0
+            total_bytes = model.size_bytes or 0
 
-            # Download with resume support, bounded parallelism
-            max_workers = int(
-                self.store.get_config("max_download_workers", "1") or "1"
-            )
-            snapshot_download(  # type: ignore[call-overload]
-                repo_id=model.repo_id,
-                local_dir=str(local_path),
-                resume_download=True,
-                token=self.hf_token,
-                max_workers=max_workers,
-            )
+            for file_info in model.files:
+                filename = file_info.get("name", "")
+                if not filename:
+                    continue
+
+                # Memory guard before each file
+                if min_free_mb > 0:
+                    avail = _get_available_memory_mb()
+                    if avail is not None and avail < min_free_mb:
+                        raise RuntimeError(
+                            f"Insufficient memory: {avail}MB available, "
+                            f"{min_free_mb}MB required "
+                            f"(configurable via min_free_memory_mb)"
+                        )
+
+                hf_hub_download(
+                    repo_id=model.repo_id,
+                    filename=filename,
+                    local_dir=str(local_path),
+                    token=self.hf_token,
+                )
+
+                # Update progress after each file
+                file_size = file_info.get("size", 0)
+                if isinstance(file_size, int):
+                    bytes_so_far += file_size
+                self.store.update_download(
+                    download.id,
+                    bytes_downloaded=bytes_so_far,
+                    total_bytes=total_bytes,
+                )
 
             # Calculate actual downloaded size
             total_size = self._calculate_directory_size(local_path)
