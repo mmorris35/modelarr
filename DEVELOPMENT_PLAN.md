@@ -26,11 +26,17 @@ Use the modelarr-executor agent to execute subtask X.Y.Z
 **Architecture:**
 ```mermaid
 flowchart TD
+    WEB["Web UI (FastAPI + htmx)"]
     CLI["modelarr CLI (Typer)"]
-    CLI --> WL["Watchlist Manager"]
-    CLI --> LIB["Library Manager"]
-    CLI --> DL["Download Engine"]
-    CLI --> MON["Monitor (APScheduler)"]
+    WEB --> WL["Watchlist Manager"]
+    WEB --> LIB["Library Manager"]
+    WEB --> DL["Download Engine"]
+    WEB --> MON["Monitor (APScheduler)"]
+    WEB --> HF
+    CLI --> WL
+    CLI --> LIB
+    CLI --> DL
+    CLI --> MON
 
     WL --> DB[("SQLite")]
     LIB --> DB
@@ -44,15 +50,20 @@ flowchart TD
     MON --> TG["Telegram Notification"]
 ```
 
-**MVP Scope**:
+**CLI MVP (Complete)**:
 - [x] Phase 0: Foundation
-- [ ] Phase 1: Data Layer (SQLite schema, models, CRUD)
-- [ ] Phase 2: HuggingFace Client (API integration, model search)
-- [ ] Phase 3: Watchlist & Monitoring (polling, match detection)
-- [ ] Phase 4: Download Engine (download, resume, library org)
-- [ ] Phase 5: CLI Interface (Typer commands)
-- [ ] Phase 6: Notifications (Telegram)
-- [ ] Phase 7: Storage Management (disk limits, prune)
+- [x] Phase 1: Data Layer (SQLite schema, models, CRUD)
+- [x] Phase 2: HuggingFace Client (API integration, model search)
+- [x] Phase 3: Download Engine (download, resume, monitoring)
+- [x] Phase 4: CLI Interface (Typer commands)
+- [x] Phase 5: Notifications (Telegram)
+- [x] Phase 6: Storage Management (disk limits, prune)
+
+**Web UI (In Progress)**:
+- [ ] Phase 7: Web Foundation (FastAPI app, deps, base template, serve command)
+- [ ] Phase 8: Web Core Pages (Dashboard, Watchlist, Library)
+- [ ] Phase 9: Web Downloads & Settings (download management, config UI, Telegram test)
+- [ ] Phase 10: Web Search & Polish (HuggingFace search, error handling, systemd)
 
 ---
 
@@ -60,11 +71,15 @@ flowchart TD
 
 - **Language**: Python 3.11+
 - **CLI Framework**: Typer
+- **Web Framework**: FastAPI + Jinja2 + htmx
+- **ASGI Server**: uvicorn
+- **CSS**: Pico CSS (dark theme, CDN)
+- **Interactivity**: htmx (vendored, ~14KB, no build step)
 - **Database**: SQLite (via sqlite3 stdlib)
 - **HuggingFace**: huggingface_hub
-- **Scheduling**: APScheduler
+- **Scheduling**: APScheduler (embedded in FastAPI lifespan)
 - **Notifications**: httpx (Telegram Bot API direct)
-- **Testing**: pytest + pytest-asyncio
+- **Testing**: pytest + pytest-asyncio + httpx (TestClient)
 - **Linting**: ruff
 - **Type Checking**: mypy
 - **Package Management**: uv
@@ -73,40 +88,54 @@ flowchart TD
 
 ## Progress Tracking
 
-### Phase 0: Foundation
-- [ ] 0.1.1: Initialize repository and Python project
-- [ ] 0.1.2: Configure dev tools (ruff, mypy, pytest)
+### Phase 0: Foundation (COMPLETE)
+- [x] 0.1.1: Initialize repository and Python project
+- [x] 0.1.2: Configure dev tools (ruff, mypy, pytest)
 
-### Phase 1: Data Layer
-- [ ] 1.1.1: SQLite schema and database module
-- [ ] 1.1.2: Pydantic models for all entities
-- [ ] 1.1.3: CRUD operations and tests
+### Phase 1: Data Layer (COMPLETE)
+- [x] 1.1.1: SQLite schema and database module
+- [x] 1.1.2: Pydantic models for all entities
+- [x] 1.1.3: CRUD operations and tests
 
-### Phase 2: HuggingFace Client
-- [ ] 2.1.1: HuggingFace API client
-- [ ] 2.1.2: Model metadata parser and format detection
+### Phase 2: HuggingFace Client (COMPLETE)
+- [x] 2.1.1: HuggingFace API client
+- [x] 2.1.2: Model metadata parser and format detection
 
-### Phase 3: Watchlist & Monitoring
-- [ ] 3.1.1: Watchlist matching engine
-- [ ] 3.1.2: Monitor polling loop with APScheduler
+### Phase 3: Download Engine & Monitoring (COMPLETE)
+- [x] 3.1.1: Download manager with resume support
+- [x] 3.1.2: Monitor polling loop with APScheduler
 
-### Phase 4: Download Engine
-- [ ] 4.1.1: Download manager with resume support
-- [ ] 4.1.2: Library organization and disk tracking
+### Phase 4: CLI Interface (COMPLETE)
+- [x] 4.1.1: Watchlist CLI commands
+- [x] 4.1.2: Library and download CLI commands
+- [x] 4.1.3: Monitor CLI commands (start/stop/status)
 
-### Phase 5: CLI Interface
-- [ ] 5.1.1: Watchlist CLI commands
-- [ ] 5.1.2: Library and download CLI commands
-- [ ] 5.1.3: Monitor CLI commands (start/stop/status)
+### Phase 5: Notifications (COMPLETE)
+- [x] 5.1.1: Telegram notification module
 
-### Phase 6: Notifications
-- [ ] 6.1.1: Telegram notification module
+### Phase 6: Storage Management (COMPLETE)
+- [x] 6.1.1: Disk limits and auto-prune
 
-### Phase 7: Storage Management
-- [ ] 7.1.1: Disk limits and auto-prune
+### Phase 7: Web Foundation
+- [ ] 7.1.1: Add web dependencies and create package structure
+- [ ] 7.1.2: FastAPI app with lifespan, deps, and base template
+- [ ] 7.1.3: Add `modelarr serve` CLI command
 
-**Current**: Phase 0
-**Next**: 0.1.1
+### Phase 8: Web Core Pages
+- [ ] 8.1.1: Dashboard page
+- [ ] 8.1.2: Watchlist page with htmx CRUD
+- [ ] 8.1.3: Library page with sort/filter/delete
+
+### Phase 9: Web Downloads & Settings
+- [ ] 9.1.1: Downloads page with active polling and manual trigger
+- [ ] 9.1.2: Settings page with config form and Telegram test
+
+### Phase 10: Web Search & Polish
+- [ ] 10.1.1: HuggingFace search page with model detail
+- [ ] 10.1.2: Error handling, empty states, and systemd service update
+
+**Current**: Phase 7
+**Next**: 7.1.1
 
 ---
 
@@ -660,16 +689,455 @@ modelarr = "modelarr.cli:app"
 
 ---
 
-## v2 Roadmap (Post-MVP)
+## Phase 7: Web Foundation
 
-- **v2.1**: Web UI dashboard (FastAPI + htmx or React)
-- **v2.2**: Weekly digest notification
-- **v2.3**: Quick-launch integration (mlx_lm.chat, ollama)
-- **v2.4**: Model comparison view
-- **v2.5**: GGUF/MLX format-aware filtering
-- **v2.6**: RSS/Atom feed of new downloads
-- **v2.7**: Ollama modelfile auto-generation
-- **v2.8**: Docker/LXC deployment for Proxmox
+**Goal**: FastAPI app skeleton, dependency injection, base template, `serve` command
+**Duration**: 1 day
+
+### Task 7.1: Web Package Setup
+
+**Subtask 7.1.1: Add Web Dependencies and Create Package Structure (Single Session)**
+
+**Prerequisites**: Phase 6 complete (all CLI features working)
+
+**Git**: `git checkout main && git pull && git checkout -b feature/7-1-web-foundation`
+
+**Deliverables**:
+- [ ] Replace the `dependencies` list in `pyproject.toml` with:
+  ```toml
+  dependencies = [
+      "typer>=0.12",
+      "huggingface-hub>=0.25",
+      "apscheduler>=3.10",
+      "httpx>=0.27",
+      "pydantic>=2.0",
+      "rich>=13.0",
+      "fastapi>=0.115",
+      "uvicorn[standard]>=0.32",
+      "jinja2>=3.1",
+  ]
+  ```
+- [ ] Run `uv sync` to install new dependencies
+- [ ] Create directory structure:
+  ```
+  src/modelarr/web/
+  ├── __init__.py
+  ├── app.py
+  ├── deps.py
+  ├── routes/
+  │   └── __init__.py
+  ├── templates/
+  │   └── base.html
+  └── static/
+      ├── htmx.min.js  (vendored from unpkg.com/htmx.org@2.0.4)
+      └── style.css
+  ```
+- [ ] In `src/modelarr/db.py`, update `get_connection()` to set busy_timeout after creating the connection:
+  ```python
+  def get_connection(db_path: Path) -> sqlite3.Connection:
+      """Get a SQLite connection with Row factory."""
+      conn = sqlite3.connect(str(db_path))
+      conn.row_factory = sqlite3.Row
+      conn.execute("PRAGMA busy_timeout = 5000")
+      return conn
+  ```
+
+**Success Criteria**:
+- [ ] `uv sync` installs fastapi, uvicorn, jinja2
+- [ ] All existing 194 tests still pass
+- [ ] Directory structure exists with `__init__.py` files
+
+**Git**: `git add -A && git commit -m "chore(web): add web dependencies and package structure [7.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 7.1.2: FastAPI App with Lifespan, Deps, and Base Template (Single Session)**
+
+**Prerequisites**: 7.1.1 complete
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/app.py` with:
+  - `create_app() -> FastAPI` factory function
+  - `lifespan` async context manager that starts/stops `ModelarrMonitor` via APScheduler
+  - Mount static files at `/static`
+  - Configure Jinja2 templates directory
+  - Include all route routers (dashboard, watchlist, library, downloads, settings, search)
+- [ ] Create `src/modelarr/web/deps.py` with FastAPI dependency functions:
+  - `get_store() -> ModelarrStore`
+  - `get_downloader(store) -> DownloadManager`
+  - `get_hf_client(store) -> HFClient`
+  - `get_storage_manager(store) -> StorageManager | None`
+  - `format_bytes(bytes_: int | None) -> str` (reuse logic from cli.py)
+- [ ] Create `src/modelarr/web/templates/base.html`:
+  - HTML5 document with Pico CSS (CDN) and `data-theme="dark"`
+  - Vendored htmx.min.js script tag
+  - Navigation: Dashboard, Watchlist, Library, Downloads, Settings, Search
+  - Content block for child templates
+  - Footer with modelarr version
+- [ ] Create `src/modelarr/web/static/style.css` with custom overrides
+- [ ] Create `tests/test_web_app.py` with basic tests:
+  - App creates successfully
+  - Static files mounted
+  - Health check endpoint works
+
+**Success Criteria**:
+- [ ] `create_app()` returns a FastAPI instance
+- [ ] Lifespan starts and stops monitor without error
+- [ ] Templates render with Pico dark theme
+- [ ] All tests pass (new + existing)
+
+**Git**: `git add -A && git commit -m "feat(web): FastAPI app with lifespan, deps, and base template [7.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 7.1.3: Add `modelarr serve` CLI Command (Single Session)**
+
+**Prerequisites**: 7.1.2 complete
+
+**Deliverables**:
+- [ ] Add `serve` command to `src/modelarr/cli.py`:
+  ```python
+  @app.command()
+  def serve(
+      host: str = typer.Option("0.0.0.0", help="Bind address"),
+      port: int = typer.Option(8585, help="Port"),
+      interval: int = typer.Option(60, "--interval", "-i", help="Monitor poll interval in minutes"),
+  ):
+      """Start the web UI with embedded monitor."""
+  ```
+  - Imports and calls `uvicorn.run()` with `create_app()`
+  - Stores interval in config before starting
+- [ ] Create `tests/test_cli_serve.py` with test that `modelarr serve --help` works
+- [ ] Verify `modelarr --help` shows the new `serve` command
+
+**Success Criteria**:
+- [ ] `modelarr serve --help` shows host, port, interval options
+- [ ] `modelarr --help` lists `serve` alongside other commands
+- [ ] All tests pass
+- [ ] `uv run ruff check src/ tests/` passes
+- [ ] `uv run mypy src/` passes
+
+**Git**: `git add -A && git commit -m "feat(cli): add serve command for web UI [7.1.3]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 7.1 Complete — Squash Merge
+- [ ] All subtasks (7.1.1, 7.1.2, 7.1.3) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] `modelarr serve` starts on port 8585 and serves base template
+- [ ] Squash merge: `git checkout main && git merge --squash feature/7-1-web-foundation`
+- [ ] Commit: `git commit -m "feat: web foundation - FastAPI app, deps, base template, serve command"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/7-1-web-foundation`
+
+---
+
+## Phase 8: Web Core Pages
+
+**Goal**: Dashboard, Watchlist, and Library pages
+**Duration**: 2 days
+
+### Task 8.1: Core Pages
+
+**Subtask 8.1.1: Dashboard Page (Single Session)**
+
+**Prerequisites**: 7.1.3 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/8-1-core-pages`
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/dashboard.py` with:
+  - `GET /` — renders dashboard with:
+    - Monitor status (running/stopped, poll interval, enabled watch count)
+    - Library stats (model count, total size, storage limit, usage percentage)
+    - Active downloads (if any, with status)
+    - Recent activity (last 5 completed/failed downloads)
+    - Quick actions: "Run Check Now" button (POST /dashboard/check), "Start/Stop Monitor" button
+  - `POST /dashboard/check` — triggers `monitor.run_once()`, returns htmx partial with results
+- [ ] Create `src/modelarr/web/templates/dashboard.html`
+- [ ] Create `src/modelarr/web/templates/partials/toast.html` for success/error notifications
+- [ ] Create `tests/test_web_dashboard.py` (use httpx TestClient)
+
+**Success Criteria**:
+- [ ] Dashboard loads at `/` with all stat cards
+- [ ] "Run Check Now" triggers poll and shows result via htmx
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(web): dashboard page with stats and quick actions [8.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 8.1.2: Watchlist Page with htmx CRUD (Single Session)**
+
+**Prerequisites**: 8.1.1 complete
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/watchlist.py` with:
+  - `GET /watchlist` — renders full watchlist table
+  - `POST /watchlist` — add new watch (form submission), returns htmx partial to append row
+  - `DELETE /watchlist/{id}` — remove watch, returns empty (htmx swap delete)
+  - `PATCH /watchlist/{id}/toggle` — toggle enabled, returns updated row partial
+- [ ] Create `src/modelarr/web/templates/watchlist.html`:
+  - Table: ID, Type, Value, Filters, Enabled (toggle switch), Actions (delete)
+  - Add form: type dropdown (model/author/query/family), value input, format filter, quant filter, size filters
+  - All mutations via htmx (no full page reload)
+- [ ] Create `src/modelarr/web/templates/partials/watch_row.html`
+- [ ] Create `src/modelarr/web/templates/partials/watch_form.html`
+- [ ] Create `tests/test_web_watchlist.py`
+
+**Success Criteria**:
+- [ ] Watchlist table shows all watches with filters
+- [ ] Add form creates watch and inserts row via htmx
+- [ ] Toggle switch enables/disables without page reload
+- [ ] Delete button removes row via htmx
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(web): watchlist page with htmx CRUD [8.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 8.1.3: Library Page with Sort/Filter/Delete (Single Session)**
+
+**Prerequisites**: 8.1.2 complete
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/library.py` with:
+  - `GET /library` — renders model table with query params: `?sort=date|size|name&format=mlx|gguf`
+  - `DELETE /library/{repo_id}` — delete model from disk and DB, returns htmx swap
+  - `GET /library/size` — returns total size as htmx partial (for header)
+- [ ] Create `src/modelarr/web/templates/library.html`:
+  - Header: total size, model count, storage usage bar (if limit set)
+  - Sort controls (htmx links that swap table body)
+  - Format filter dropdown
+  - Table: Repo ID (link to HF), Author, Format, Quantization, Size, Downloaded date, Delete button
+- [ ] Create `src/modelarr/web/templates/partials/model_row.html`
+- [ ] Create `tests/test_web_library.py`
+
+**Success Criteria**:
+- [ ] Library table shows all downloaded models
+- [ ] Sort by date/size/name works via htmx
+- [ ] Format filter narrows results
+- [ ] Delete removes model from disk and table row
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(web): library page with sort, filter, and delete [8.1.3]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 8.1 Complete — Squash Merge
+- [ ] All subtasks (8.1.1, 8.1.2, 8.1.3) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] All three pages render correctly in browser
+- [ ] Squash merge: `git checkout main && git merge --squash feature/8-1-core-pages`
+- [ ] Commit: `git commit -m "feat: web core pages - dashboard, watchlist, library"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/8-1-core-pages`
+
+---
+
+## Phase 9: Web Downloads & Settings
+
+**Goal**: Download management and settings pages
+**Duration**: 1 day
+
+### Task 9.1: Downloads and Settings
+
+**Subtask 9.1.1: Downloads Page with Active Polling and Manual Trigger (Single Session)**
+
+**Prerequisites**: 8.1.3 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/9-1-downloads-settings`
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/downloads.py` with:
+  - `GET /downloads` — renders downloads page with active + history sections
+  - `GET /downloads/active` — htmx partial returning active download rows (polled every 5s)
+  - `POST /downloads` — manual download by repo_id, dispatches to APScheduler thread pool, returns queued status
+- [ ] Create `src/modelarr/web/templates/downloads.html`:
+  - Active downloads section with progress bars (htmx polls `/downloads/active` every 5s via `hx-trigger="every 5s"`)
+  - Manual download form: repo_id input + submit button
+  - History table: last 20 completed/failed downloads with status badge, size, timestamps, error message
+- [ ] Create `src/modelarr/web/templates/partials/download_row.html`
+- [ ] Create `src/modelarr/web/templates/partials/active_downloads.html`
+- [ ] Create `tests/test_web_downloads.py`
+
+**Success Criteria**:
+- [ ] Active downloads show with progress bars
+- [ ] Active section auto-refreshes every 5 seconds
+- [ ] Manual download form dispatches download and shows queued status
+- [ ] History shows completed/failed downloads
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(web): downloads page with active polling and manual trigger [9.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 9.1.2: Settings Page with Config Form and Telegram Test (Single Session)**
+
+**Prerequisites**: 9.1.1 complete
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/settings.py` with:
+  - `GET /settings` — renders config form with current values
+  - `POST /settings` — save all config values, return toast confirmation
+  - `POST /settings/telegram-test` — send test Telegram notification, return success/failure toast
+- [ ] Create `src/modelarr/web/templates/settings.html`:
+  - Form fields for all config keys:
+    - `library_path` (text input)
+    - `max_storage_gb` (number input)
+    - `storage_auto_prune` (checkbox)
+    - `interval_minutes` (number input)
+    - `huggingface_token` (password input)
+    - `telegram_bot_token` (password input)
+    - `telegram_chat_id` (text input)
+  - Save button (htmx POST)
+  - "Test Telegram" button (htmx POST, shows toast)
+- [ ] Create `tests/test_web_settings.py`
+
+**Success Criteria**:
+- [ ] Settings form loads with current config values
+- [ ] Save persists all values to SQLite config table
+- [ ] "Test Telegram" sends a test message and shows result
+- [ ] Sensitive fields (tokens) display as password inputs
+- [ ] All tests pass
+- [ ] `grep -r "TODO\|FIXME" src/` returns no matches
+
+**Git**: `git add -A && git commit -m "feat(web): settings page with config form and Telegram test [9.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 9.1 Complete — Squash Merge
+- [ ] All subtasks (9.1.1, 9.1.2) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] Squash merge: `git checkout main && git merge --squash feature/9-1-downloads-settings`
+- [ ] Commit: `git commit -m "feat: web downloads and settings pages"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/9-1-downloads-settings`
+
+---
+
+## Phase 10: Web Search & Polish
+
+**Goal**: HuggingFace search page, error handling, systemd deployment
+**Duration**: 1 day
+
+### Task 10.1: Search and Polish
+
+**Subtask 10.1.1: HuggingFace Search Page with Model Detail (Single Session)**
+
+**Prerequisites**: 9.1.2 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/10-1-search-polish`
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/search.py` with:
+  - `GET /search` — renders search page with optional `?q=` query param
+  - `GET /search/results` — htmx partial returning search result cards (triggered by search input)
+  - `GET /search/model/{repo_id}` — model detail panel (files, tags, metadata)
+  - `POST /search/watch` — add model/author to watchlist from search results
+  - `POST /search/download` — trigger immediate download from search results
+- [ ] Create `src/modelarr/web/templates/search.html`:
+  - Search input with htmx debounce (`hx-trigger="keyup changed delay:500ms"`)
+  - Result cards: repo_id, author, size, format, quantization, download count, HF link
+  - Each card: "Add to Watchlist" and "Download Now" buttons
+  - Model detail expansion (click to reveal files, tags)
+- [ ] Create `src/modelarr/web/templates/partials/search_results.html`
+- [ ] Create `tests/test_web_search.py`
+
+**Success Criteria**:
+- [ ] Search input queries HuggingFace API with debounce
+- [ ] Result cards show model metadata
+- [ ] "Add to Watchlist" creates watch entry
+- [ ] "Download Now" triggers background download
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(web): HuggingFace search page with model detail [10.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 10.1.2: Error Handling, Empty States, and systemd Service Update (Single Session)**
+
+**Prerequisites**: 10.1.1 complete
+
+**Deliverables**:
+- [ ] Add error handling:
+  - 404 page template
+  - 500 error handler with user-friendly message
+  - htmx error swap targets (show toast on failed requests)
+- [ ] Add empty states to all pages:
+  - Watchlist: "No watches yet. Add one to start monitoring."
+  - Library: "No models downloaded yet."
+  - Downloads: "No active or recent downloads."
+  - Search: "Search HuggingFace for LLM models."
+- [ ] Update navigation to highlight active page
+- [ ] Update README.md with web UI documentation and screenshots section
+- [ ] Document systemd service update for oldassmini-0:
+  ```ini
+  ExecStart=/home/mike/modelarr/.venv/bin/modelarr serve --port 8585 --interval 60
+  ```
+- [ ] Final verification:
+  - [ ] `uv run ruff check src/ tests/`
+  - [ ] `uv run mypy src/`
+  - [ ] `uv run pytest` — all tests pass
+  - [ ] `grep -r "TODO\|FIXME" src/` returns no matches
+  - [ ] All 6 pages load and function correctly
+
+**Success Criteria**:
+- [ ] Error pages render cleanly
+- [ ] Empty states guide user to next action
+- [ ] All pages work end-to-end
+- [ ] README documents web UI usage
+- [ ] All tests pass
+- [ ] Lint and type check clean
+
+**Git**: `git add -A && git commit -m "feat(web): error handling, empty states, and polish [10.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 10.1 Complete — Squash Merge
+- [ ] All subtasks (10.1.1, 10.1.2) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] Type check passes: `uv run mypy src/`
+- [ ] All 6 web pages functional
+- [ ] Squash merge: `git checkout main && git merge --squash feature/10-1-search-polish`
+- [ ] Commit: `git commit -m "feat: web search page and polish"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/10-1-search-polish`
+
+---
+
+## v2 Roadmap (Post Web UI)
+
+- **v2.1**: Weekly digest notification
+- **v2.2**: Quick-launch integration (mlx_lm.chat, ollama)
+- **v2.3**: Model comparison view
+- **v2.4**: RSS/Atom feed of new downloads
+- **v2.5**: Ollama modelfile auto-generation
+- **v2.6**: Docker/LXC deployment for Proxmox
 
 ---
 

@@ -3,10 +3,10 @@
 ## Basic Information
 
 - **Project Name**: modelarr
-- **Project Type**: cli
-- **Primary Goal**: Radarr/Sonarr-style tool that monitors HuggingFace for new LLM model releases matching a watchlist and auto-downloads them to a local library
-- **Target Users**: AI developers and enthusiasts who want to maintain a local collection of LLM models, MSP/IT professionals running local inference on Apple Silicon, Anyone building a sovereign AI stack who wants models ready before they need them
-- **Timeline**: 1 week
+- **Project Type**: web_app
+- **Primary Goal**: Radarr/Sonarr-style tool that monitors HuggingFace for new LLM model releases matching a watchlist and auto-downloads them to a local library, with a web UI dashboard for management
+- **Target Users**: AI developers and enthusiasts who want to maintain a local collection of LLM models, MSP/IT professionals running local inference on Apple Silicon, Anyone building a sovereign AI stack who wants models ready before they need them, Homelab users who want a Radarr-like web interface for managing LLM models
+- **Timeline**: 2 weeks
 - **Team Size**: 1
 
 ## Functional Requirements
@@ -21,14 +21,16 @@
 - CLI interface for watchlist CRUD, library browsing, manual downloads, and status checks
 - Storage management: configurable disk limits, optional auto-prune of oldest versions
 - SQLite persistence for watchlist, download history, and library metadata
+- First-run setup wizard (modelarr init) for interactive configuration
+- Web UI dashboard: FastAPI + htmx + Pico CSS dark theme, single process with embedded monitor
+- Web UI pages: Dashboard (stats, active downloads, monitor status), Watchlist (CRUD with htmx), Library (sortable/filterable model table), Downloads (active progress polling, history, manual trigger), Settings (config form, Telegram test), HuggingFace Search (search, model detail, add to watchlist or download)
+- Web serve command (modelarr serve) that runs both web UI and monitor scheduler in one process
 
 ### Nice-to-Have Features (v2)
 
-- Web UI dashboard showing library contents, download queue, and watchlist
 - Weekly digest notification summarizing new releases in watchlist
 - Quick-launch integration with mlx_lm.chat or ollama for downloaded models
 - Model comparison view (specs, benchmarks, size across downloaded models)
-- GGUF and MLX format detection and filtering
 - RSS/Atom feed generation of new downloads
 - Ollama modelfile auto-generation for downloaded GGUF models
 - Docker/LXC deployment option for headless operation on Proxmox
@@ -40,22 +42,34 @@
 - Python 3.11+
 - SQLite
 - huggingface_hub
-- Click or Typer for CLI
-- APScheduler or similar for polling
+- Typer for CLI
+- APScheduler for polling
+- FastAPI for web UI
+- Jinja2 for server-rendered templates
+- htmx for interactive UI (vendored, no build step)
+- Pico CSS for dark theme styling
+- uvicorn as ASGI server
+- httpx for HTTP client (Telegram, HuggingFace)
 
 ### Cannot Use
 
 - Docker as a runtime requirement (optional deployment target only)
 - Any paid API beyond HuggingFace
+- Node.js or any JavaScript build tools
+- React, Vue, or any SPA framework
 
 ## Other Constraints
 
-- Must run on Linux (Proxmox LXC or Ubuntu) and macOS (Apple Silicon)
+- Must run on Linux (Ubuntu, Proxmox LXC) and macOS (Apple Silicon)
+- Must run on resource-constrained hardware (Core2Duo, 1.7GB RAM) alongside other services
 - No cloud dependencies beyond HuggingFace API for model discovery
 - Must handle large downloads (10-100GB models) gracefully with resume
 - Respect HuggingFace API rate limits
-- Telegram notifications via existing plugin or direct Bot API
-- Python 3.11+ for ecosystem compatibility with huggingface_hub and ML tooling
+- Telegram notifications via direct Bot API
+- Web UI must be server-rendered with htmx — no SPA, no JS build step
+- Single process serves both web UI and monitor scheduler via FastAPI lifespan
+- SQLite busy_timeout needed for concurrent web+scheduler writes
+- Total memory budget ~60MB for web+monitor process
 
 ## Success Criteria
 
