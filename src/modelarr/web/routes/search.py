@@ -1,5 +1,6 @@
 """Search routes for modelarr web UI."""
 
+import threading
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -120,7 +121,11 @@ async def download_from_search(
             return _toast_html(msg, is_error=True)
 
         model_info = hf_client.get_model_info(repo_id)
-        downloader.download_model(model_info)
+        threading.Thread(
+            target=downloader.download_model,
+            args=(model_info,),
+            daemon=True,
+        ).start()
 
         msg = f"<strong>Success!</strong> Download queued for {repo_id}"
         return _toast_html(msg, is_error=False)

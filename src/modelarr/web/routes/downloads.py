@@ -1,5 +1,6 @@
 """Downloads routes for modelarr web UI."""
 
+import threading
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -76,8 +77,12 @@ async def manual_download(
         # Fetch model info
         model_info = hf_client.get_model_info(repo_id)
 
-        # Dispatch download to thread pool
-        downloader.download_model(model_info)
+        # Dispatch download to background thread (non-blocking)
+        threading.Thread(
+            target=downloader.download_model,
+            args=(model_info,),
+            daemon=True,
+        ).start()
 
         msg = f"<strong>Success!</strong> Download queued for {repo_id}"
         return _toast_html(msg, is_error=False)
