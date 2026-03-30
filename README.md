@@ -2,7 +2,28 @@
 
 **Radarr/Sonarr for LLM models.** Monitors HuggingFace for new releases matching your watchlist and auto-downloads them to a local library.
 
-Never miss a new model release again. Follow specific models, authors, search queries, or entire model families — modelarr checks HuggingFace on a schedule and downloads new matches automatically, with resume support, disk management, and Telegram notifications.
+---
+
+## Why modelarr?
+
+New open-weight models drop daily. The good ones get gated, relicensed, or quietly removed without warning. If you're running local inference — whether on a Mac Mini, a homelab server, or an air-gapped workstation — you need the models *before* you need them.
+
+modelarr watches HuggingFace so you don't have to. Tell it what you care about (an author, a model family, a search query), and it handles the rest: polling for new releases, filtering by format and quantization, downloading to your local library, and notifying you when something lands.
+
+**Who is this for?**
+
+- **Local inference operators** — You run Ollama, llama.cpp, mlx_lm, or vLLM and want new GGUF/MLX models ready without manual hunting
+- **Model collectors** — You maintain a curated library across formats and quantizations and want it to grow automatically
+- **Sovereign AI builders** — You believe model access shouldn't depend on the political climate, a cloud provider's terms of service, or whether someone decides open weights are too dangerous. You want local copies, on your hardware, under your control
+- **Homelab enthusiasts** — You already run Radarr and Sonarr. This is the same idea for LLMs: watchlist, auto-download, web UI, notifications
+
+**What problems does it solve?**
+
+- Models you want get released while you sleep — modelarr catches them
+- Models get taken down or gated after release — you already have them
+- Manually checking HuggingFace is tedious — modelarr polls on a schedule
+- Downloading 50GB models by hand is error-prone — modelarr streams with resume support
+- You forget what you've downloaded — modelarr tracks your library with format, quantization, and disk usage
 
 ![modelarr help](assets/help.svg)
 
