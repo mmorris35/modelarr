@@ -1,0 +1,21 @@
+<tr hx-target="this" hx-swap="outerHTML">
+    <td>{{ watch.id }}</td>
+    <td>{{ watch.type }}</td>
+    <td>{{ watch.value }}</td>
+    <td>
+        {% if watch.filters.formats or watch.filters.quantizations or watch.filters.min_size_b or watch.filters.max_size_b %}
+            {% if watch.filters.formats %}fmt: {{ watch.filters.formats|join(',') }}{% endif %}
+            {% if watch.filters.quantizations %}quant: {{ watch.filters.quantizations|join(',') }}{% endif %}
+            {% if watch.filters.min_size_b %}min: {{ watch.filters.min_size_b }}B{% endif %}
+            {% if watch.filters.max_size_b %}max: {{ watch.filters.max_size_b }}B{% endif %}
+        {% else %}
+            (none)
+        {% endif %}
+    </td>
+    <td>
+        <input type="checkbox" {% if watch.enabled %}checked{% endif %} hx-patch="/watchlist/{{ watch.id }}/toggle" style="cursor: pointer;">
+    </td>
+    <td>
+        <button hx-delete="/watchlist/{{ watch.id }}" hx-confirm="Delete this watch?" class="secondary" style="padding: 0.5rem 1rem;">Delete</button>
+    </td>
+</tr>

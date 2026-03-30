@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Library - modelarr{% endblock %}
+
+{% block content %}
+<h1>Model Library</h1>
+
+<!-- Header stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-label">Total Size</div>
+        <div class="stat-value">{{ total_size }}</div>
+        <small>{{ model_count }} model(s)</small>
+    </div>
+    {% if max_storage_gb != "None" %}
+    <div class="stat-card">
+        <div class="stat-label">Storage Usage</div>
+        <div class="stat-value">{{ "%.1f"|format(storage_usage_pct) }}%</div>
+        <small>{{ max_storage_gb }} GB limit</small>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Sort controls -->
+<div style="margin-bottom: 1rem;">
+    <label for="sort-select">Sort by:</label>
+    <select id="sort-select" onchange="location.href='/library?sort=' + this.value + '{% if format_filter %}&format_filter={{ format_filter }}{% endif %}'">
+        <option value="date" {% if sort == "date" %}selected{% endif %}>Date (newest first)</option>
+        <option value="size" {% if sort == "size" %}selected{% endif %}>Size (largest first)</option>
+        <option value="name" {% if sort == "name" %}selected{% endif %}>Name (A-Z)</option>
+    </select>
+</div>
+
+<!-- Format filter -->
+<div style="margin-bottom: 1rem;">
+    <label for="format-select">Format:</label>
+    <select id="format-select" onchange="location.href='/library?sort={{ sort }}' + (this.value ? '&format_filter=' + this.value : '')">
+        <option value="">All formats</option>
+        <option value="gguf" {% if format_filter == "gguf" %}selected{% endif %}>GGUF</option>
+        <option value="mlx" {% if format_filter == "mlx" %}selected{% endif %}>MLX</option>
+        <option value="safetensors" {% if format_filter == "safetensors" %}selected{% endif %}>Safetensors</option>
+    </select>
+</div>
+
+{% if models %}
+<table>
+    <thead>
+        <tr>
+            <th>Repo ID</th>
+            <th>Author</th>
+            <th>Format</th>
+            <th>Quantization</th>
+            <th>Size</th>
+            <th>Downloaded</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for model in models %}
+        <tr hx-target="this" hx-swap="outerHTML swap:1s">
+            <td>
+                <a href="https://huggingface.co/{{ model.repo_id }}" target="_blank">{{ model.repo_id }}</a>
+            </td>
+            <td>{{ model.author }}</td>
+            <td><span class="badge badge-success">{{ model.format or "—" }}</span></td>
+            <td>{{ model.quantization or "—" }}</td>
+            <td>{{ format_bytes(model.size_bytes) }}</td>
+            <td>{{ model.downloaded_at.strftime("%Y-%m-%d %H:%M") if model.downloaded_at else "—" }}</td>
+            <td>
+                <button hx-delete="/library/{{ model.repo_id }}" hx-confirm="Delete {{ model.repo_id }}?" class="secondary" style="padding: 0.5rem 1rem;">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">📚</div>
+    <h3>No models downloaded yet.</h3>
+    <p>Use the <a href="/search">search</a> page or <a href="/downloads">download</a> page to add models to your library.</p>
+</div>
+{% endif %}
+
+{% endblock %}

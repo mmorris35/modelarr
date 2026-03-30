@@ -114,9 +114,12 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok"}
 
-    # Placeholder dashboard route (will be replaced in 8.1.1)
-    @app.get("/")
-    async def dashboard():
-        return Response("<h1>Dashboard</h1>", media_type="text/html")
+    # Include route routers
+    from modelarr.web.routes.dashboard import router as dashboard_router
+    from modelarr.web.routes.library import router as library_router
+    from modelarr.web.routes.watchlist import router as watchlist_router
+    app.include_router(dashboard_router)
+    app.include_router(watchlist_router)
+    app.include_router(library_router)
 
     return app

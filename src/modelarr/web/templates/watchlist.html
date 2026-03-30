@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist - modelarr{% endblock %}
+
+{% block content %}
+<h1>Watchlist</h1>
+
+{% if watches %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Filters</th>
+            <th>Enabled</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="watchlist-body">
+        {% for watch in watches %}
+        {% include "partials/watch_row.html" %}
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">📋</div>
+    <h3>No watches yet.</h3>
+    <p>Add one to start monitoring for new models.</p>
+</div>
+{% endif %}
+
+<hr style="margin: 2rem 0;">
+
+<h2>Add New Watch</h2>
+<form hx-post="/watchlist" hx-target="#watchlist-body" hx-swap="beforeend" style="max-width: 500px;">
+    <div>
+        <label for="type">Type</label>
+        <select name="type" id="type" required>
+            <option value="">Select type...</option>
+            <option value="model">Model (specific repo)</option>
+            <option value="author">Author (all models by author)</option>
+            <option value="query">Query (search results)</option>
+            <option value="family">Family (model family)</option>
+        </select>
+    </div>
+
+    <div>
+        <label for="value">Value</label>
+        <input type="text" name="value" id="value" placeholder="e.g., mlx-community/Qwen3.5-27B-MLX-4bit" required>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+            <label for="format">Format (optional)</label>
+            <input type="text" name="format" id="format" placeholder="e.g., gguf, mlx">
+        </div>
+        <div>
+            <label for="quant">Quantization (optional)</label>
+            <input type="text" name="quant" id="quant" placeholder="e.g., 4bit, 8bit">
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+            <label for="min_size_gb">Min Size (GB)</label>
+            <input type="number" name="min_size_gb" id="min_size_gb" min="0" placeholder="optional">
+        </div>
+        <div>
+            <label for="max_size_gb">Max Size (GB)</label>
+            <input type="number" name="max_size_gb" id="max_size_gb" min="0" placeholder="optional">
+        </div>
+    </div>
+
+    <button type="submit">Add Watch</button>
+</form>
+
+{% endblock %}

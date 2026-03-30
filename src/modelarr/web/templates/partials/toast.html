@@ -1,0 +1,4 @@
+<div class="toast" {% if message_type == "error" %}style="background-color: var(--form-element-invalid-border-color); color: white;"{% elif message_type == "success" %}style="background-color: var(--form-element-valid-border-color); color: black;"{% endif %}>
+    <strong>{{ title }}</strong>
+    {% if message %}{{ message }}{% endif %}
+</div>

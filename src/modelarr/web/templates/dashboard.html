@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - modelarr{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <!-- Monitor Status -->
+    <div class="stat-card">
+        <div class="stat-label">Monitor Status</div>
+        <div class="stat-value">
+            {% if is_running %}
+                <span style="color: var(--form-element-valid-border-color);">● Running</span>
+            {% else %}
+                <span style="color: var(--form-element-invalid-border-color);">● Stopped</span>
+            {% endif %}
+        </div>
+        <small>Poll interval: {{ interval }} minutes</small>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="stat-card">
+        <div class="stat-label">Enabled Watches</div>
+        <div class="stat-value">{{ enabled_watch_count }}</div>
+        <small><a href="/watchlist">Manage watchlist</a></small>
+    </div>
+
+    <!-- Library Size -->
+    <div class="stat-card">
+        <div class="stat-label">Library Size</div>
+        <div class="stat-value">{{ total_size }}</div>
+        <small>{{ model_count }} model(s)</small>
+    </div>
+
+    <!-- Storage Usage -->
+    {% if max_storage_gb != "None" %}
+    <div class="stat-card">
+        <div class="stat-label">Storage Usage</div>
+        <div class="stat-value">{{ "%.1f"|format(storage_usage_pct) }}%</div>
+        <small>{{ max_storage_gb }} GB limit</small>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions -->
+<div class="button-group" style="margin-bottom: 2rem;">
+    <button hx-post="/dashboard/check" hx-target="#toast-container" hx-swap="beforeend">Run Check Now</button>
+    <a href="/library" class="button secondary">View Library</a>
+    <a href="/settings" class="button secondary">Settings</a>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Active Downloads -->
+{% if active_downloads %}
+<h2>Active Downloads</h2>
+<div style="margin-bottom: 2rem;">
+    <table>
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Started</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dl in active_downloads %}
+            <tr>
+                <td>{{ dl.model_id }}</td>
+                <td><span class="badge badge-warning">{{ dl.status }}</span></td>
+                <td>
+                    {% if dl.total_bytes and dl.total_bytes > 0 %}
+                        {% set pct = (dl.bytes_downloaded or 0) / dl.total_bytes * 100 %}
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ pct }}%;">{{ "%.1f"|format(pct) }}%</div>
+                        </div>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ dl.started_at.strftime("%H:%M:%S") if dl.started_at else "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Recent Activity -->
+{% if recent %}
+<h2>Recent Activity</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Model ID</th>
+            <th>Status</th>
+            <th>Completed</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dl in recent %}
+        <tr>
+            <td>{{ dl.model_id }}</td>
+            <td>
+                {% if dl.status == "complete" %}
+                    <span class="badge badge-success">Complete</span>
+                {% elif dl.status == "failed" %}
+                    <span class="badge badge-error">Failed</span>
+                {% else %}
+                    <span class="badge badge-warning">{{ dl.status }}</span>
+                {% endif %}
+            </td>
+            <td>{{ dl.completed_at.strftime("%Y-%m-%d %H:%M") if dl.completed_at else "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}
