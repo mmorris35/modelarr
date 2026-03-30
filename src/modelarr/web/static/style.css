@@ -1,0 +1,175 @@
+/* Custom overrides for modelarr web UI */
+
+body {
+    line-height: 1.6;
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+nav ul {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 1rem;
+}
+
+nav strong {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--form-element-valid-border-color);
+    transition: color 0.2s;
+}
+
+nav a:hover {
+    color: var(--link-color);
+}
+
+.stat-card {
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-label {
+    color: var(--muted-color);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--form-element-valid-border-color);
+}
+
+.progress-bar {
+    height: 2rem;
+    background-color: var(--border-color);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--form-element-valid-border-color), var(--link-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: width 0.3s ease;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.badge-success {
+    background-color: var(--form-element-valid-border-color);
+    color: black;
+}
+
+.badge-error {
+    background-color: var(--form-element-invalid-border-color);
+    color: white;
+}
+
+.badge-warning {
+    background-color: var(--border-color);
+    color: var(--muted-color);
+}
+
+.toast {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    padding: 1rem;
+    background-color: var(--card-background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+    max-width: 400px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th,
+table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+table th {
+    background-color: var(--border-color);
+    font-weight: bold;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted-color);
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+button,
+input[type="submit"] {
+    cursor: pointer;
+}
+
+.htmx-request.htmx-settling .htmx-swapping {
+    opacity: 1;
+}
+
+.htmx-request.htmx-settling .htmx-settling {
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+.htmx-request .htmx-swapping {
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}

@@ -79,6 +79,32 @@ def main(
     pass
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Bind address"),
+    port: int = typer.Option(8585, help="Port"),
+    interval: int = typer.Option(60, "--interval", "-i", help="Monitor poll interval in minutes"),
+) -> None:
+    """Start the web UI with embedded monitor."""
+    try:
+        import uvicorn
+        from modelarr.web.app import create_app
+
+        # Store interval in config before starting
+        store = _get_store()
+        store.set_config("interval_minutes", str(interval))
+
+        app = create_app()
+        console.print(f"[green]✓[/green] Starting modelarr web UI on {host}:{port}")
+        console.print(f"[cyan]Monitor interval: {interval} minutes[/cyan]")
+        console.print("[yellow]Press Ctrl+C to stop[/yellow]")
+        uvicorn.run(app, host=host, port=port, log_level="info")
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+
+
 def _is_configured() -> bool:
     """Check if modelarr has been configured (library_path is set)."""
     store = _get_store()
