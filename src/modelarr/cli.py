@@ -79,6 +79,84 @@ def main(
     pass
 
 
+def _is_configured() -> bool:
+    """Check if modelarr has been configured (library_path is set)."""
+    store = _get_store()
+    return store.get_config("library_path") is not None
+
+
+@app.command()
+def init() -> None:
+    """Run the first-time setup wizard."""
+    store = _get_store()
+
+    existing = store.get_config("library_path")
+    if existing:
+        console.print(f"[yellow]modelarr is already configured (library: {existing})[/yellow]")
+        if not typer.confirm("Re-run setup?", default=False):
+            return
+
+    console.print()
+    console.print("[bold cyan]Welcome to modelarr![/bold cyan]")
+    console.print("Let's configure your model library.\n")
+
+    # 1. Library path (required)
+    default_path = "~/models"
+    library_input = typer.prompt(
+        "Where should models be stored?",
+        default=default_path,
+    )
+    library_path = str(Path(library_input).expanduser())
+    store.set_config("library_path", library_path)
+    console.print(f"  [green]✓[/green] Library path: {library_path}")
+
+    # 2. Storage limit (optional)
+    console.print()
+    if typer.confirm("Set a disk usage limit?", default=False):
+        max_gb = typer.prompt("Maximum storage (GB)", type=int)
+        store.set_config("max_storage_gb", str(max_gb))
+        console.print(f"  [green]✓[/green] Storage limit: {max_gb} GB")
+
+        # 3. Auto-prune (only if limit set)
+        if typer.confirm("Auto-delete oldest models when over limit?", default=True):
+            store.set_config("storage_auto_prune", "true")
+            console.print("  [green]✓[/green] Auto-prune: enabled")
+        else:
+            store.set_config("storage_auto_prune", "false")
+
+    # 4. HuggingFace token (optional)
+    console.print()
+    if typer.confirm("Add a HuggingFace token? (for private/gated models)", default=False):
+        hf_token = typer.prompt("HuggingFace token", hide_input=True)
+        store.set_config("huggingface_token", hf_token)
+        console.print("  [green]✓[/green] HuggingFace token saved")
+
+    # 5. Telegram notifications (optional)
+    console.print()
+    if typer.confirm("Enable Telegram notifications?", default=False):
+        bot_token = typer.prompt("Telegram bot token")
+        chat_id = typer.prompt("Telegram chat ID")
+        store.set_config("telegram_bot_token", bot_token)
+        store.set_config("telegram_chat_id", chat_id)
+        console.print("  [green]✓[/green] Telegram notifications configured")
+
+    # 6. Poll interval (optional)
+    console.print()
+    interval = typer.prompt("Poll interval in minutes", default=60, type=int)
+    store.set_config("interval_minutes", str(interval))
+    console.print(f"  [green]✓[/green] Poll interval: {interval} minutes")
+
+    # Summary
+    console.print()
+    console.print("[bold green]Setup complete![/bold green]")
+    console.print()
+    console.print("Next steps:")
+    console.print("  [cyan]modelarr watch add model[/cyan] <repo_id>  — add a model to watch")
+    console.print("  [cyan]modelarr watch add author[/cyan] <name>    — watch an author")
+    console.print("  [cyan]modelarr monitor check[/cyan]              — run a check now")
+    console.print("  [cyan]modelarr config show[/cyan]                — view your config")
+
+
 # ============================================================================
 # WATCH COMMANDS
 # ============================================================================
