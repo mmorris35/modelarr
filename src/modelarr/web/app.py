@@ -30,6 +30,13 @@ async def lifespan(app: FastAPI):
 
     # Startup
     store = ModelarrStore(get_db_path())
+
+    # Clean up stale downloads from before a crash/reboot
+    for stale in store.get_active_downloads():
+        store.update_download(
+            stale.id, status="failed", error="Interrupted by restart"
+        )
+
     interval_minutes = int(store.get_config("interval_minutes") or "60")
 
     hf_client = HFClient(token=store.get_config("huggingface_token"))

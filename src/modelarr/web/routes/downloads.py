@@ -1,14 +1,48 @@
 """Downloads routes for modelarr web UI."""
 
 import threading
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.hf_client import HFClient
+from modelarr.models import DownloadRecord
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_hf_client, get_store
+
+# Local timezone for display
+_local_tz = datetime.now(UTC).astimezone().tzinfo
+
+
+def _enrich_download(dl: DownloadRecord, store: ModelarrStore) -> dict:
+    """Add model name and local times to a download record."""
+    model = store.get_model_by_id(dl.model_id) if dl.model_id else None
+    repo_id = model.repo_id if model else f"model #{dl.model_id}"
+
+    started_local = (
+        dl.started_at.replace(tzinfo=UTC).astimezone(_local_tz) if dl.started_at else None
+    )
+    completed_local = (
+        dl.completed_at.replace(tzinfo=UTC).astimezone(_local_tz) if dl.completed_at else None
+    )
+
+    pct = 0.0
+    if dl.total_bytes and dl.total_bytes > 0 and dl.bytes_downloaded:
+        pct = (dl.bytes_downloaded / dl.total_bytes) * 100
+
+    return {
+        "id": dl.id,
+        "repo_id": repo_id,
+        "status": dl.status,
+        "bytes_downloaded": dl.bytes_downloaded,
+        "total_bytes": dl.total_bytes,
+        "pct": pct,
+        "started_at": started_local,
+        "completed_at": completed_local,
+        "error": dl.error,
+    }
 
 
 def _toast_html(message: str, is_error: bool = False) -> str:
@@ -33,8 +67,11 @@ async def downloads_page(
     downloader: DownloadManager = Depends(get_downloader),
 ):
     """Render the downloads page with active + history sections."""
-    active_downloads = store.get_active_downloads()
-    history = store.get_download_history(limit=20)
+    active_raw = store.get_active_downloads()
+    history_raw = store.get_download_history(limit=20)
+
+    active_downloads = [_enrich_download(dl, store) for dl in active_raw]
+    history = [_enrich_download(dl, store) for dl in history_raw]
 
     template = request.app.jinja_env.get_template("downloads.html")
     html = template.render(
@@ -51,7 +88,8 @@ async def active_downloads(
     store: ModelarrStore = Depends(get_store),
 ):
     """Return active downloads as htmx partial (polled every 5s)."""
-    active = store.get_active_downloads()
+    active_raw = store.get_active_downloads()
+    active = [_enrich_download(dl, store) for dl in active_raw]
 
     template = request.app.jinja_env.get_template("partials/active_downloads.html")
     html = template.render(active_downloads=active, format_bytes=format_bytes)

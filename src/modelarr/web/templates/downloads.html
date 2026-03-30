@@ -34,7 +34,7 @@
 <table>
     <thead>
         <tr>
-            <th>Model ID</th>
+            <th>Model</th>
             <th>Status</th>
             <th>Size</th>
             <th>Started</th>
@@ -45,7 +45,7 @@
     <tbody>
         {% for dl in history %}
         <tr>
-            <td>{{ dl.model_id }}</td>
+            <td><strong>{{ dl.repo_id }}</strong></td>
             <td>
                 {% if dl.status == "complete" %}
                     <span class="badge badge-success">Complete</span>
@@ -60,7 +60,7 @@
             <td>{{ format_bytes(dl.total_bytes) }}</td>
             <td>{{ dl.started_at.strftime("%Y-%m-%d %H:%M") if dl.started_at else "—" }}</td>
             <td>{{ dl.completed_at.strftime("%Y-%m-%d %H:%M") if dl.completed_at else "—" }}</td>
-            <td>{{ dl.error or "—" }}</td>
+            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ dl.error or "—" }}</td>
         </tr>
         {% endfor %}
     </tbody>

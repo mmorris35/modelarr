@@ -302,6 +302,44 @@ class ModelarrStore:
             metadata=metadata,
         )
 
+    def get_model_by_id(self, model_id: int) -> ModelRecord | None:
+        """Get a model record by ID.
+
+        Args:
+            model_id: The model database ID
+
+        Returns:
+            The ModelRecord if found, None otherwise
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM models WHERE id = ?", (model_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+
+        return ModelRecord(
+            id=row["id"],
+            repo_id=row["repo_id"],
+            author=row["author"],
+            name=row["name"],
+            format=row["format"],
+            quantization=row["quantization"],
+            size_bytes=row["size_bytes"],
+            last_commit=row["last_commit"],
+            downloaded_at=(
+                datetime.fromisoformat(row["downloaded_at"])
+                if row["downloaded_at"]
+                else None
+            ),
+            local_path=row["local_path"],
+            metadata=metadata,
+        )
+
     def get_model_by_repo(self, repo_id: str) -> ModelRecord | None:
         """Get a model record by repo ID.
 

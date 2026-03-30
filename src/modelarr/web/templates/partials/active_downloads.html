@@ -2,7 +2,7 @@
 <table>
     <thead>
         <tr>
-            <th>Model ID</th>
+            <th>Model</th>
             <th>Status</th>
             <th>Progress</th>
             <th>Started</th>
@@ -11,17 +11,21 @@
     <tbody>
         {% for dl in active_downloads %}
         <tr>
-            <td>{{ dl.model_id }}</td>
+            <td><strong>{{ dl.repo_id }}</strong></td>
             <td><span class="badge badge-warning">{{ dl.status }}</span></td>
             <td>
-                {% if dl.total_bytes and dl.total_bytes > 0 %}
-                    {% set pct = (dl.bytes_downloaded or 0) / dl.total_bytes * 100 %}
+                {% if dl.total_bytes and dl.total_bytes > 0 and dl.bytes_downloaded %}
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: {{ pct }}%;">{{ "%.1f"|format(pct) }}%</div>
+                        <div class="progress-fill" style="width: {{ dl.pct }}%;">{{ "%.1f"|format(dl.pct) }}%</div>
                     </div>
                     <small>{{ format_bytes(dl.bytes_downloaded) }} / {{ format_bytes(dl.total_bytes) }}</small>
+                {% elif dl.total_bytes and dl.total_bytes > 0 %}
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;">0%</div>
+                    </div>
+                    <small>0 B / {{ format_bytes(dl.total_bytes) }} — starting...</small>
                 {% else %}
-                    <span class="badge badge-warning">Initializing...</span>
+                    <small>Fetching model info...</small>
                 {% endif %}
             </td>
             <td>{{ dl.started_at.strftime("%H:%M:%S") if dl.started_at else "—" }}</td>
