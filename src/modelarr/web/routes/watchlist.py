@@ -32,16 +32,16 @@ async def add_watch(
     try:
         data = await request.form()
 
-        type_ = data.get("type")
-        value = data.get("value")
-        format_ = data.get("format") or None
-        quant = data.get("quant") or None
+        type_ = str(data.get("type", ""))
+        value = str(data.get("value", ""))
+        format_ = str(data.get("format", "")) or None
+        quant = str(data.get("quant", "")) or None
         min_size_gb = data.get("min_size_gb")
         max_size_gb = data.get("max_size_gb")
 
         # Convert sizes from GB to bytes
-        min_size_b = int(min_size_gb) * (1024**3) if min_size_gb else None
-        max_size_b = int(max_size_gb) * (1024**3) if max_size_gb else None
+        min_size_b = int(str(min_size_gb)) * (1024**3) if min_size_gb else None
+        max_size_b = int(str(max_size_gb)) * (1024**3) if max_size_gb else None
 
         filters = WatchlistFilters(
             min_size_b=min_size_b,

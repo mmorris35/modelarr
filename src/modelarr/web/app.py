@@ -1,10 +1,11 @@
 """FastAPI application for modelarr web UI."""
 
-import asyncio
-from contextlib import asynccontextmanager
+import threading
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 
@@ -17,7 +18,6 @@ from modelarr.monitor import ModelarrMonitor
 from modelarr.notifier import TelegramNotifier
 from modelarr.storage import StorageManager
 from modelarr.store import ModelarrStore
-
 
 # Global monitor instance managed by lifespan
 _monitor: ModelarrMonitor | None = None
@@ -36,7 +36,10 @@ async def lifespan(app: FastAPI):
     matcher = WatchlistMatcher(hf_client)
 
     library_path_str = store.get_config("library_path")
-    library_path = Path(library_path_str) if library_path_str else Path.home() / ".modelarr" / "library"
+    if library_path_str:
+        library_path = Path(library_path_str)
+    else:
+        library_path = Path.home() / ".modelarr" / "library"
     downloader = DownloadManager(
         store=store,
         library_path=library_path,
@@ -49,7 +52,9 @@ async def lifespan(app: FastAPI):
     storage_manager = None
     if max_storage_gb:
         max_bytes = int(max_storage_gb) * (1024**3)
-        storage_manager = StorageManager(store=store, library_path=library_path, max_bytes=max_bytes)
+        storage_manager = StorageManager(
+            store=store, library_path=library_path, max_bytes=max_bytes
+        )
         downloader.storage_manager = storage_manager
 
     _monitor = ModelarrMonitor(
@@ -62,12 +67,9 @@ async def lifespan(app: FastAPI):
 
     # Run monitor in a background thread (non-blocking)
     def run_monitor():
-        try:
+        with suppress(Exception):
             _monitor.start()
-        except Exception:
-            pass
 
-    import threading
     monitor_thread = threading.Thread(target=run_monitor, daemon=True)
     monitor_thread.start()
 
@@ -82,10 +84,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     if _monitor:
-        try:
+        with suppress(Exception):
             _monitor.stop()
-        except Exception:
-            pass
 
 
 def create_app() -> FastAPI:
@@ -107,7 +107,7 @@ def create_app() -> FastAPI:
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=True,
     )
-    app.jinja_env = template_env
+    app.jinja_env = template_env  # type: ignore[attr-defined]
 
     # Health check endpoint
     @app.get("/health")
@@ -118,6 +118,7 @@ def create_app() -> FastAPI:
     from modelarr.web.routes.dashboard import router as dashboard_router
     from modelarr.web.routes.downloads import router as downloads_router
     from modelarr.web.routes.library import router as library_router
+    from modelarr.web.routes.search import router as search_router
     from modelarr.web.routes.settings import router as settings_router
     from modelarr.web.routes.watchlist import router as watchlist_router
     app.include_router(dashboard_router)
@@ -125,5 +126,17 @@ def create_app() -> FastAPI:
     app.include_router(library_router)
     app.include_router(downloads_router)
     app.include_router(settings_router)
+    app.include_router(search_router)
+
+    # Error handlers
+    @app.exception_handler(404)
+    async def not_found_handler(request: Request, exc):
+        template = app.jinja_env.get_template("404.html")  # type: ignore[attr-defined]
+        return HTMLResponse(template.render(request=request), status_code=404)
+
+    @app.exception_handler(Exception)
+    async def general_exception_handler(request: Request, exc: Exception):
+        template = app.jinja_env.get_template("500.html")  # type: ignore[attr-defined]
+        return HTMLResponse(template.render(request=request), status_code=500)
 
     return app

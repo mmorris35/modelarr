@@ -1,6 +1,5 @@
 """Tests for the settings web page."""
 
-from pathlib import Path
 
 from fastapi.testclient import TestClient
 

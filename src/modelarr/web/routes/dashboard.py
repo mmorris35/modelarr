@@ -1,13 +1,25 @@
 """Dashboard routes for modelarr web UI."""
 
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
 from jinja2 import Template
 
 from modelarr.downloader import DownloadManager
 from modelarr.store import ModelarrStore
-from modelarr.web.deps import format_bytes, get_downloader, get_storage_manager, get_store
+from modelarr.web.deps import format_bytes, get_downloader, get_store
+
+
+def _toast_html(message: str, is_error: bool = False) -> str:
+    """Generate a toast HTML fragment."""
+    color = "var(--form-element-invalid-border-color)" if is_error else (
+        "var(--form-element-valid-border-color)"
+    )
+    text_color = "white" if is_error else "black"
+    return (
+        f'<div class="toast" style="background-color: {color}; color: {text_color};">'
+        f"{message}</div>"
+    )
+
 
 router = APIRouter()
 
@@ -32,7 +44,7 @@ async def dashboard(
 
     # Storage stats
     max_storage_gb = store.get_config("max_storage_gb")
-    storage_usage_pct = 0
+    storage_usage_pct: float = 0.0
     if max_storage_gb:
         max_bytes = int(max_storage_gb) * (1024**3)
         storage_usage_pct = (total_size / max_bytes) * 100
@@ -81,8 +93,12 @@ async def dashboard_check(
         matcher = WatchlistMatcher(hf_client)
 
         from pathlib import Path
+
         library_path_str = store.get_config("library_path")
-        library_path = Path(library_path_str) if library_path_str else Path.home() / ".modelarr" / "library"
+        if library_path_str:
+            library_path = Path(library_path_str)
+        else:
+            library_path = Path.home() / ".modelarr" / "library"
         downloader = DownloadManager(
             store=store,
             library_path=library_path,
@@ -101,12 +117,19 @@ async def dashboard_check(
         result_count = len(results)
 
         if result_count > 0:
-            html = f'<div class="toast" style="background-color: var(--form-element-valid-border-color); color: black;"><strong>Success!</strong> Downloaded {result_count} model(s).</div>'
+            msg = (
+                f"<strong>Success!</strong> Downloaded {result_count} model(s)."
+            )
+            html = _toast_html(msg, is_error=False)
         else:
-            html = '<div class="toast"><strong>Check complete.</strong> No new models found.</div>'
+            html = (
+                '<div class="toast"><strong>Check complete.</strong>'
+                " No new models found.</div>"
+            )
 
         return Template(html).render()
 
     except Exception as e:
-        html = f'<div class="toast" style="background-color: var(--form-element-invalid-border-color); color: white;"><strong>Error:</strong> {str(e)}</div>'
+        msg = f"<strong>Error:</strong> {str(e)}"
+        html = _toast_html(msg, is_error=True)
         return Template(html).render()

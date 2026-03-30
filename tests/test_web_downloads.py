@@ -1,7 +1,5 @@
 """Tests for the downloads web page."""
 
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
 from modelarr.db import init_db

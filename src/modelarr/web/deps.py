@@ -17,21 +17,30 @@ def get_store() -> ModelarrStore:
     return ModelarrStore(db_path)
 
 
-def get_downloader(store: ModelarrStore = Depends(get_store)) -> DownloadManager:
+def get_downloader(  # noqa: B008
+    store: ModelarrStore = Depends(get_store),
+) -> DownloadManager:
     """Get the download manager."""
     library_path_str = store.get_config("library_path")
-    library_path = Path(library_path_str) if library_path_str else Path.home() / ".modelarr" / "library"
+    if library_path_str:
+        library_path = Path(library_path_str)
+    else:
+        library_path = Path.home() / ".modelarr" / "library"
     hf_token = store.get_config("huggingface_token")
     return DownloadManager(store=store, library_path=library_path, hf_token=hf_token)
 
 
-def get_hf_client(store: ModelarrStore = Depends(get_store)) -> HFClient:
+def get_hf_client(  # noqa: B008
+    store: ModelarrStore = Depends(get_store),
+) -> HFClient:
     """Get the HuggingFace client."""
     token = store.get_config("huggingface_token")
     return HFClient(token=token)
 
 
-def get_storage_manager(store: ModelarrStore = Depends(get_store)) -> StorageManager | None:
+def get_storage_manager(  # noqa: B008
+    store: ModelarrStore = Depends(get_store),
+) -> StorageManager | None:
     """Get the storage manager if configured."""
     library_path_str = store.get_config("library_path")
     max_storage_gb = store.get_config("max_storage_gb")

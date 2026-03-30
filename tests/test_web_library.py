@@ -1,12 +1,8 @@
 """Tests for the library web page."""
 
-from datetime import datetime
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
 from modelarr.db import init_db
-from modelarr.models import ModelRecord
 from modelarr.store import ModelarrStore
 from modelarr.web.app import create_app
 

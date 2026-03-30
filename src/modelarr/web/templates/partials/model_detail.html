@@ -1,0 +1,23 @@
+<div style="border: 1px solid var(--border-color); padding: 1rem; margin: 1rem 0; border-radius: 0.5rem; background-color: var(--border-color);">
+    <h4 style="margin-top: 0;">{{ model.repo_id }}</h4>
+
+    {% if model.files %}
+    <details style="margin: 1rem 0;">
+        <summary style="cursor: pointer;">Files ({{ model.files|length }})</summary>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+            {% for file in model.files[:5] %}
+            <li>{{ file.get("filename", "unknown") }} - {{ format_bytes(file.get("size", 0)) }}</li>
+            {% endfor %}
+            {% if model.files|length > 5 %}
+            <li><em>... and {{ model.files|length - 5 }} more</em></li>
+            {% endif %}
+        </ul>
+    </details>
+    {% endif %}
+
+    {% if model.last_modified %}
+    <p style="margin: 0.25rem 0; font-size: 0.9rem; color: var(--muted-color);">
+        <strong>Last modified:</strong> {{ model.last_modified }}
+    </p>
+    {% endif %}
+</div>

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import typer
+import uvicorn
 from rich.console import Console
 from rich.table import Table
 
@@ -15,6 +16,7 @@ from modelarr.models import WatchlistFilters
 from modelarr.monitor import ModelarrMonitor
 from modelarr.notifier import TelegramNotifier
 from modelarr.store import ModelarrStore
+from modelarr.web.app import create_app
 
 console = Console()
 
@@ -87,9 +89,6 @@ def serve(
 ) -> None:
     """Start the web UI with embedded monitor."""
     try:
-        import uvicorn
-        from modelarr.web.app import create_app
-
         # Store interval in config before starting
         store = _get_store()
         store.set_config("interval_minutes", str(interval))

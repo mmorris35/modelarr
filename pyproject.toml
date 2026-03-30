@@ -46,6 +46,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]  # FastAPI Depends() in function defaults is a pattern, not an error
 
 [tool.mypy]
 strict = false

@@ -1,6 +1,5 @@
 """Downloads routes for modelarr web UI."""
 
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from jinja2 import Template
@@ -9,6 +8,19 @@ from modelarr.downloader import DownloadManager
 from modelarr.hf_client import HFClient
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_hf_client, get_store
+
+
+def _toast_html(message: str, is_error: bool = False) -> str:
+    """Generate a toast HTML fragment."""
+    color = "var(--form-element-invalid-border-color)" if is_error else (
+        "var(--form-element-valid-border-color)"
+    )
+    text_color = "white" if is_error else "black"
+    return (
+        f'<div class="toast" style="background-color: {color}; color: {text_color};">'
+        f"{message}</div>"
+    )
+
 
 router = APIRouter()
 
@@ -55,10 +67,11 @@ async def manual_download(
     """Trigger a manual download by repo_id."""
     try:
         data = await request.form()
-        repo_id = data.get("repo_id")
+        repo_id = str(data.get("repo_id", ""))
 
         if not repo_id:
-            return '<div class="toast" style="background-color: var(--form-element-invalid-border-color); color: white;"><strong>Error:</strong> repo_id is required</div>'
+            msg = "<strong>Error:</strong> repo_id is required"
+            return _toast_html(msg, is_error=True)
 
         # Fetch model info
         model_info = hf_client.get_model_info(repo_id)
@@ -66,7 +79,9 @@ async def manual_download(
         # Dispatch download to thread pool
         downloader.download_model(model_info)
 
-        return '<div class="toast" style="background-color: var(--form-element-valid-border-color); color: black;"><strong>Success!</strong> Download queued for ' + repo_id + '</div>'
+        msg = f"<strong>Success!</strong> Download queued for {repo_id}"
+        return _toast_html(msg, is_error=False)
 
     except Exception as e:
-        return f'<div class="toast" style="background-color: var(--form-element-invalid-border-color); color: white;"><strong>Error:</strong> {str(e)}</div>'
+        msg = f"<strong>Error:</strong> {str(e)}"
+        return _toast_html(msg, is_error=True)

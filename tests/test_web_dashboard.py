@@ -1,10 +1,8 @@
 """Tests for the dashboard web page."""
 
-from pathlib import Path
-
 from fastapi.testclient import TestClient
 
-from modelarr.db import get_db_path, init_db
+from modelarr.db import init_db
 from modelarr.store import ModelarrStore
 from modelarr.web.app import create_app
 

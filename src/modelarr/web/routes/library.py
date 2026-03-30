@@ -1,12 +1,11 @@
 """Library routes for modelarr web UI."""
 
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 
 from modelarr.downloader import DownloadManager
 from modelarr.store import ModelarrStore
-from modelarr.web.deps import format_bytes, get_downloader, get_storage_manager, get_store
+from modelarr.web.deps import format_bytes, get_downloader, get_store
 
 router = APIRouter()
 
@@ -36,7 +35,7 @@ async def library_page(
 
     total_size = downloader.get_library_size()
     max_storage_gb = store.get_config("max_storage_gb")
-    storage_usage_pct = 0
+    storage_usage_pct: float = 0.0
     if max_storage_gb:
         max_bytes = int(max_storage_gb) * (1024**3)
         storage_usage_pct = (total_size / max_bytes) * 100

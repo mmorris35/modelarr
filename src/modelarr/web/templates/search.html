@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Search - modelarr{% endblock %}
+
+{% block content %}
+<h1>Search HuggingFace</h1>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Search Input -->
+<div style="max-width: 600px; margin-bottom: 2rem;">
+    <label for="search-input">Model Name or Author</label>
+    <input
+        type="text"
+        id="search-input"
+        placeholder="e.g., Qwen, mistral, phi"
+        hx-get="/search/results?q="
+        hx-target="#search-results"
+        hx-trigger="keyup changed delay:500ms"
+        hx-include="[id='search-input']"
+        value="{{ query }}"
+    >
+</div>
+
+<!-- Search Results -->
+<div id="search-results">
+    {% if query %}
+        <p style="color: var(--muted-color);">Searching...</p>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <h3>Search HuggingFace for LLM models.</h3>
+            <p>Find models to add to your watchlist or download immediately.</p>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,46 @@
+{% for model in results %}
+<div style="border: 1px solid var(--border-color); padding: 1rem; margin-bottom: 1rem; border-radius: 0.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 0.5rem 0;">
+                <a href="https://huggingface.co/{{ model.repo_id }}" target="_blank">{{ model.repo_id }}</a>
+            </h3>
+            <p style="margin: 0.25rem 0; color: var(--muted-color);">
+                <strong>Author:</strong> {{ model.author }}
+            </p>
+            {% if model.format %}
+            <p style="margin: 0.25rem 0; color: var(--muted-color);">
+                <strong>Format:</strong> <span class="badge badge-success">{{ model.format }}</span>
+                {% if model.quantization %}<span class="badge badge-success">{{ model.quantization }}</span>{% endif %}
+            </p>
+            {% endif %}
+            <p style="margin: 0.25rem 0; color: var(--muted-color);">
+                <strong>Size:</strong> {{ format_bytes(model.size_bytes) }}
+            </p>
+            {% if model.downloads %}
+            <p style="margin: 0.25rem 0; color: var(--muted-color);">
+                <strong>Downloads:</strong> {{ model.downloads }}
+            </p>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; flex-direction: column;">
+            <form hx-post="/search/watch" hx-target="#toast-container" hx-swap="beforeend" style="margin: 0;">
+                <input type="hidden" name="type" value="model">
+                <input type="hidden" name="value" value="{{ model.repo_id }}">
+                <button type="submit" class="secondary" style="padding: 0.5rem 1rem; white-space: nowrap;">Add to Watchlist</button>
+            </form>
+            <form hx-post="/search/download" hx-target="#toast-container" hx-swap="beforeend" style="margin: 0;">
+                <input type="hidden" name="repo_id" value="{{ model.repo_id }}">
+                <button type="submit" style="padding: 0.5rem 1rem; white-space: nowrap;">Download Now</button>
+            </form>
+        </div>
+    </div>
+
+    {% if model.tags %}
+    <p style="margin: 0.5rem 0 0 0; padding-top: 0.5rem; border-top: 1px solid var(--border-color); color: var(--muted-color);">
+        <strong>Tags:</strong> {{ model.tags|join(", ") }}
+    </p>
+    {% endif %}
+</div>
+{% endfor %}
