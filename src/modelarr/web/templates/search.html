@@ -14,11 +14,11 @@
     <input
         type="text"
         id="search-input"
+        name="q"
         placeholder="e.g., Qwen, mistral, phi"
-        hx-get="/search/results?q="
+        hx-get="/search/results"
         hx-target="#search-results"
         hx-trigger="keyup changed delay:500ms"
-        hx-include="[id='search-input']"
         value="{{ query }}"
     >
 </div>
