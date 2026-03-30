@@ -6,13 +6,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from huggingface_hub import hf_hub_download
+import httpx
 
 from modelarr.models import DownloadRecord, ModelInfo, ModelRecord
 from modelarr.storage import StorageManager
 from modelarr.store import ModelarrStore
 
 logger = logging.getLogger(__name__)
+
+_CHUNK_SIZE = 1024 * 1024  # 1MB chunks
+_HF_CDN = "https://huggingface.co"
 
 
 def _get_available_memory_mb() -> int | None:
@@ -25,6 +28,49 @@ def _get_available_memory_mb() -> int | None:
     except (FileNotFoundError, ValueError, IndexError):
         pass
     return None
+
+
+def _stream_download(
+    repo_id: str,
+    filename: str,
+    local_dir: Path,
+    token: str | None = None,
+) -> int:
+    """Download a single file from HuggingFace via streaming HTTP.
+
+    Streams in 1MB chunks to keep memory usage constant regardless of
+    file size. Supports resume via HTTP Range headers.
+
+    Returns:
+        Number of bytes downloaded (new bytes, not including resumed portion)
+    """
+    url = f"{_HF_CDN}/{repo_id}/resolve/main/{filename}"
+    dest = local_dir / filename
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    headers: dict[str, str] = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    # Resume support: skip already-downloaded bytes
+    existing_size = dest.stat().st_size if dest.exists() else 0
+    if existing_size > 0:
+        headers["Range"] = f"bytes={existing_size}-"
+
+    bytes_downloaded = 0
+    with httpx.stream("GET", url, headers=headers, follow_redirects=True, timeout=300) as resp:
+        if resp.status_code == 416:
+            # Range not satisfiable — file already complete
+            return 0
+        resp.raise_for_status()
+
+        mode = "ab" if existing_size > 0 and resp.status_code == 206 else "wb"
+        with open(dest, mode) as f:
+            for chunk in resp.iter_bytes(chunk_size=_CHUNK_SIZE):
+                f.write(chunk)
+                bytes_downloaded += len(chunk)
+
+    return bytes_downloaded
 
 
 class DownloadManager:
@@ -143,10 +189,10 @@ class DownloadManager:
                             f"(configurable via min_free_memory_mb)"
                         )
 
-                hf_hub_download(
+                _stream_download(
                     repo_id=model.repo_id,
                     filename=filename,
-                    local_dir=str(local_path),
+                    local_dir=local_path,
                     token=self.hf_token,
                 )
 
