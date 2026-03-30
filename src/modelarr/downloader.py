@@ -191,8 +191,14 @@ class DownloadManager:
                 self.store.get_config("min_free_memory_mb", "200") or "200"
             )
             bytes_so_far = 0
-            total_bytes = model.size_bytes or 0
+            # Calculate total from file sizes if model.size_bytes is missing
+            total_bytes = model.size_bytes or sum(
+                f.get("size", 0) for f in model.files if isinstance(f.get("size"), int)
+            )
             download_id = download.id
+            # Update total_bytes in DB in case it was 0 at creation
+            if total_bytes > 0:
+                self.store.update_download(download_id, total_bytes=total_bytes)
             store = self.store
 
             def on_progress(bytes_delta: int) -> None:

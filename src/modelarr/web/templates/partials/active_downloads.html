@@ -24,8 +24,10 @@
                         <div class="progress-fill" style="width: 0%;">0%</div>
                     </div>
                     <small>0 B / {{ format_bytes(dl.total_bytes) }} — starting...</small>
+                {% elif dl.bytes_downloaded and dl.bytes_downloaded > 0 %}
+                    <small>{{ format_bytes(dl.bytes_downloaded) }} downloaded...</small>
                 {% else %}
-                    <small>Fetching model info...</small>
+                    <small>Starting download...</small>
                 {% endif %}
             </td>
             <td>{{ dl.started_at.strftime("%H:%M:%S") if dl.started_at else "—" }}</td>
