@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - modelarr{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<form hx-post="/settings" hx-target="#toast-container" hx-swap="beforeend" style="max-width: 500px;">
+    <fieldset>
+        <legend>Library</legend>
+
+        <div>
+            <label for="library_path">Library Path</label>
+            <input type="text" name="library_path" id="library_path" value="{{ library_path }}" placeholder="/path/to/models">
+        </div>
+
+        <div>
+            <label for="max_storage_gb">Max Storage (GB)</label>
+            <input type="number" name="max_storage_gb" id="max_storage_gb" value="{{ max_storage_gb }}" min="0" placeholder="optional">
+        </div>
+
+        <div>
+            <label for="storage_auto_prune">
+                <input type="checkbox" name="storage_auto_prune" id="storage_auto_prune" {% if storage_auto_prune %}checked{% endif %}>
+                Auto-delete oldest models when over limit
+            </label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Monitor</legend>
+
+        <div>
+            <label for="interval_minutes">Poll Interval (minutes)</label>
+            <input type="number" name="interval_minutes" id="interval_minutes" value="{{ interval_minutes }}" min="1">
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>HuggingFace</legend>
+
+        <div>
+            <label for="huggingface_token">API Token</label>
+            <input type="password" name="huggingface_token" id="huggingface_token" value="{{ huggingface_token }}" placeholder="optional">
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Telegram Notifications</legend>
+
+        <div>
+            <label for="telegram_bot_token">Bot Token</label>
+            <input type="password" name="telegram_bot_token" id="telegram_bot_token" value="{{ telegram_bot_token }}" placeholder="optional">
+        </div>
+
+        <div>
+            <label for="telegram_chat_id">Chat ID</label>
+            <input type="text" name="telegram_chat_id" id="telegram_chat_id" value="{{ telegram_chat_id }}" placeholder="optional">
+        </div>
+
+        <div class="button-group">
+            <button type="submit">Save Settings</button>
+            <button type="button" hx-post="/settings/telegram-test" hx-target="#toast-container" hx-swap="beforeend" class="secondary">Test Telegram</button>
+        </div>
+    </fieldset>
+</form>
+
+{% endblock %}

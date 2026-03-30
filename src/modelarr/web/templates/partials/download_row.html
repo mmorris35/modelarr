@@ -1,0 +1,18 @@
+<tr>
+    <td>{{ download.model_id }}</td>
+    <td>
+        {% if download.status == "complete" %}
+            <span class="badge badge-success">Complete</span>
+        {% elif download.status == "failed" %}
+            <span class="badge badge-error">Failed</span>
+        {% elif download.status == "downloading" %}
+            <span class="badge badge-warning">Downloading</span>
+        {% else %}
+            <span class="badge badge-warning">{{ download.status }}</span>
+        {% endif %}
+    </td>
+    <td>{{ format_bytes(download.total_bytes) }}</td>
+    <td>{{ download.started_at.strftime("%Y-%m-%d %H:%M") if download.started_at else "—" }}</td>
+    <td>{{ download.completed_at.strftime("%Y-%m-%d %H:%M") if download.completed_at else "—" }}</td>
+    <td>{{ download.error or "—" }}</td>
+</tr>

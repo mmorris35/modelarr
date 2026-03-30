@@ -1,0 +1,34 @@
+{% if active_downloads %}
+<table>
+    <thead>
+        <tr>
+            <th>Model ID</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Started</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dl in active_downloads %}
+        <tr>
+            <td>{{ dl.model_id }}</td>
+            <td><span class="badge badge-warning">{{ dl.status }}</span></td>
+            <td>
+                {% if dl.total_bytes and dl.total_bytes > 0 %}
+                    {% set pct = (dl.bytes_downloaded or 0) / dl.total_bytes * 100 %}
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ pct }}%;">{{ "%.1f"|format(pct) }}%</div>
+                    </div>
+                    <small>{{ format_bytes(dl.bytes_downloaded) }} / {{ format_bytes(dl.total_bytes) }}</small>
+                {% else %}
+                    <span class="badge badge-warning">Initializing...</span>
+                {% endif %}
+            </td>
+            <td>{{ dl.started_at.strftime("%H:%M:%S") if dl.started_at else "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="color: var(--muted-color);">No active downloads.</p>
+{% endif %}

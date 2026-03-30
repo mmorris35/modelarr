@@ -116,10 +116,14 @@ def create_app() -> FastAPI:
 
     # Include route routers
     from modelarr.web.routes.dashboard import router as dashboard_router
+    from modelarr.web.routes.downloads import router as downloads_router
     from modelarr.web.routes.library import router as library_router
+    from modelarr.web.routes.settings import router as settings_router
     from modelarr.web.routes.watchlist import router as watchlist_router
     app.include_router(dashboard_router)
     app.include_router(watchlist_router)
     app.include_router(library_router)
+    app.include_router(downloads_router)
+    app.include_router(settings_router)
 
     return app

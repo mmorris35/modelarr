@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Downloads - modelarr{% endblock %}
+
+{% block content %}
+<h1>Downloads</h1>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Active Downloads Section -->
+<h2>Active Downloads</h2>
+<div id="active-downloads" hx-get="/downloads/active" hx-trigger="every 5s" hx-swap="innerHTML">
+    {% include "partials/active_downloads.html" %}
+</div>
+
+<hr style="margin: 2rem 0;">
+
+<!-- Manual Download Form -->
+<h2>Download a Model</h2>
+<form hx-post="/downloads" hx-target="#toast-container" hx-swap="beforeend" style="max-width: 500px;">
+    <div>
+        <label for="repo_id">Repository ID</label>
+        <input type="text" name="repo_id" id="repo_id" placeholder="e.g., mlx-community/Qwen3.5-27B-MLX-4bit" required>
+    </div>
+    <button type="submit">Download Now</button>
+</form>
+
+<hr style="margin: 2rem 0;">
+
+<!-- Download History -->
+<h2>Recent Downloads</h2>
+{% if history %}
+<table>
+    <thead>
+        <tr>
+            <th>Model ID</th>
+            <th>Status</th>
+            <th>Size</th>
+            <th>Started</th>
+            <th>Completed</th>
+            <th>Error</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for dl in history %}
+        <tr>
+            <td>{{ dl.model_id }}</td>
+            <td>
+                {% if dl.status == "complete" %}
+                    <span class="badge badge-success">Complete</span>
+                {% elif dl.status == "failed" %}
+                    <span class="badge badge-error">Failed</span>
+                {% elif dl.status == "downloading" %}
+                    <span class="badge badge-warning">Downloading</span>
+                {% else %}
+                    <span class="badge badge-warning">{{ dl.status }}</span>
+                {% endif %}
+            </td>
+            <td>{{ format_bytes(dl.total_bytes) }}</td>
+            <td>{{ dl.started_at.strftime("%Y-%m-%d %H:%M") if dl.started_at else "—" }}</td>
+            <td>{{ dl.completed_at.strftime("%Y-%m-%d %H:%M") if dl.completed_at else "—" }}</td>
+            <td>{{ dl.error or "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <div class="empty-state-icon">📥</div>
+    <h3>No recent downloads.</h3>
+    <p>Use the form above or the monitor to download models.</p>
+</div>
+{% endif %}
+
+{% endblock %}
