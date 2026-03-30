@@ -5,8 +5,8 @@ import os
 import signal
 from pathlib import Path
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
 
 from modelarr.downloader import DownloadManager
 from modelarr.matcher import WatchlistMatcher

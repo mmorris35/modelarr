@@ -1,5 +1,6 @@
 """Storage management module for modelarr with disk limits and auto-prune."""
 
+from datetime import datetime
 from pathlib import Path
 
 from modelarr.models import ModelRecord
@@ -58,7 +59,7 @@ class StorageManager:
         # Get all models sorted by download time (oldest first)
         models = self.store.list_models()
         downloaded_models = [m for m in models if m.downloaded_at]
-        downloaded_models.sort(key=lambda m: m.downloaded_at)
+        downloaded_models.sort(key=lambda m: m.downloaded_at or datetime.min)
 
         freed_bytes = 0
         for model in downloaded_models:

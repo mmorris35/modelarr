@@ -7,9 +7,9 @@ name = "modelarr"
 version = "0.1.0"
 description = "Radarr/Sonarr for LLM models. Monitors HuggingFace for new releases matching a watchlist and auto-downloads them to a local library."
 authors = [
-    {name = "Mike", email = "mike@example.com"},
+    {name = "Mike Morris"},
 ]
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -45,7 +45,7 @@ class HFClient:
         results = self.api.list_models(
             search=query,
             filter=search_filter,
-            sort=sort,
+            sort=sort,  # type: ignore[arg-type]
             limit=limit,
         )
 
@@ -263,8 +263,8 @@ class HFClient:
             # Get quantization from largest model file if available
             quantization = None
             if files:
-                largest_file = max(files, key=lambda f: f.get("size", 0))
-                quantization = HFClient.detect_quantization(largest_file.get("name", ""))
+                largest_file = max(files, key=lambda f: int(str(f.get("size", 0))))
+                quantization = HFClient.detect_quantization(str(largest_file.get("name", "")))
 
             # Extract tags
             tags = []

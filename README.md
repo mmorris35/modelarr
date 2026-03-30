@@ -26,7 +26,7 @@ Never miss a new model release again. Follow specific models, authors, search qu
 **Requirements:** Python 3.11+ and [uv](https://docs.astral.sh/uv/)
 
 ```bash
-git clone https://github.com/SDS-Mike/modelarr.git
+git clone https://github.com/mmorris35/modelarr.git
 cd modelarr
 uv sync
 ```
@@ -264,4 +264,4 @@ src/modelarr/
 
 ## License
 
-MIT
+Apache-2.0 — see [LICENSE](LICENSE) for details.

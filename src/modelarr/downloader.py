@@ -76,7 +76,7 @@ class DownloadManager:
                 and not self.storage_manager.check_space(model.size_bytes or 0)
             ):
                 # Over limit - try to prune if auto_prune is enabled
-                config_auto_prune = self.store.get_config("storage_auto_prune", "false")
+                config_auto_prune = self.store.get_config("storage_auto_prune", "false") or "false"
                 if config_auto_prune.lower() == "true":
                     self.storage_manager.prune_oldest(model.size_bytes or 0)
                     # Check again after pruning
@@ -94,19 +94,20 @@ class DownloadManager:
                     raise RuntimeError(error_msg)
 
             # Update to downloading status
-            download = self.store.update_download(
+            updated = self.store.update_download(
                 download.id,
                 status="downloading",
             )
-            if download is None:
+            if updated is None:
                 raise RuntimeError("Failed to update download status")
+            download = updated
 
             # Create local path: library_path / author / model_name
             local_path = self.library_path / model.author / model.name
             local_path.mkdir(parents=True, exist_ok=True)
 
             # Download with resume support
-            snapshot_download(
+            snapshot_download(  # type: ignore[call-overload]
                 repo_id=model.repo_id,
                 local_dir=str(local_path),
                 resume_download=True,
@@ -117,13 +118,16 @@ class DownloadManager:
             total_size = self._calculate_directory_size(local_path)
 
             # Update download record to complete
-            download = self.store.update_download(
+            completed = self.store.update_download(
                 download.id,
                 status="complete",
                 completed_at=datetime.now(UTC),
                 bytes_downloaded=total_size,
                 total_bytes=total_size,
             )
+            if completed is None:
+                raise RuntimeError("Failed to complete download")
+            download = completed
 
             # Update model record with local path and download timestamp
             self.store.upsert_model(
@@ -137,23 +141,20 @@ class DownloadManager:
                 local_path=str(local_path),
             )
 
-            if download is None:
-                raise RuntimeError("Failed to complete download")
-
             return download
 
         except Exception as e:
             # Mark download as failed
             error_msg = str(e)
-            download = self.store.update_download(
+            failed = self.store.update_download(
                 download.id,
                 status="failed",
                 completed_at=datetime.now(UTC),
                 error=error_msg,
             )
-            if download is None:
+            if failed is None:
                 raise RuntimeError(f"Failed to mark download as failed: {error_msg}") from e
-            return download
+            return failed
 
     def get_library_size(self) -> int:
         """Get total size of all downloaded models in the library.

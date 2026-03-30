@@ -130,7 +130,7 @@ flowchart TD
 - [ ] Create `src/modelarr/cli.py` with Typer app skeleton (version callback, help text)
 - [ ] Create `.gitignore` for Python (venv, __pycache__, .ruff_cache, *.db, dist/)
 - [ ] Create `README.md` with project description, architecture diagram, and install instructions
-- [ ] Create `LICENSE` (MIT)
+- [x] Create `LICENSE` (Apache-2.0)
 
 **pyproject.toml dependencies**:
 ```

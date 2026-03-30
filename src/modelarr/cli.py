@@ -57,11 +57,12 @@ def _format_bytes(bytes_: int | None) -> str:
     """Format bytes as human-readable string."""
     if bytes_ is None:
         return "Unknown"
+    size = float(bytes_)
     for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if bytes_ < 1024:
-            return f"{bytes_:.2f} {unit}"
-        bytes_ /= 1024
-    return f"{bytes_:.2f} PB"
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return f"{size:.2f} PB"
 
 
 @app.callback()
@@ -199,6 +200,9 @@ def toggle(watch_id: int = typer.Argument(..., help="ID of watch to toggle")) ->
         store = _get_store()
         if store.toggle_watch(watch_id):
             entry = store.get_watch(watch_id)
+            if entry is None:
+                console.print(f"[red]Error:[/red] Watch ID {watch_id} not found")
+                raise typer.Exit(code=1) from None
             status = "enabled" if entry.enabled else "disabled"
             console.print(f"[green]✓[/green] Watch ID {watch_id} {status}")
         else:

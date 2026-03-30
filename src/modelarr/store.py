@@ -66,7 +66,7 @@ class ModelarrStore:
             (type_, value, filters_json, enabled, now, now),
         )
         conn.commit()
-        watch_id = cursor.lastrowid
+        watch_id: int = cursor.lastrowid  # type: ignore[assignment]
         conn.close()
 
         return WatchlistEntry(
@@ -431,7 +431,7 @@ class ModelarrStore:
             ),
         )
         conn.commit()
-        download_id = cursor.lastrowid
+        download_id: int = cursor.lastrowid  # type: ignore[assignment]
         conn.close()
 
         return DownloadRecord(
@@ -479,8 +479,8 @@ class ModelarrStore:
             return None
 
         # Build update with provided values
-        updates = []
-        values = []
+        updates: list[str] = []
+        values: list[str | int] = []
 
         if status is not None:
             updates.append("status = ?")
@@ -649,7 +649,8 @@ class ModelarrStore:
         if not row:
             return default
 
-        return row[0]
+        result: str = row[0]
+        return result
 
     def set_config(self, key: str, value: str) -> None:
         """Set a configuration value.
