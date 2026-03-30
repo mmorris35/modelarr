@@ -11,12 +11,14 @@ Never miss a new model release again. Follow specific models, authors, search qu
 ## Features
 
 - **Smart Watchlist** — Follow specific models, authors, search queries, or model families with format/quantization filters
-- **Auto-Download** — New models matching your watchlist are downloaded automatically via `huggingface_hub` with resume support
+- **Auto-Download** — Streaming downloads in 1MB chunks with resume support — safe on low-RAM hardware
+- **Web UI** — Dark-themed dashboard with htmx for managing watches, browsing your library, triggering downloads, and searching HuggingFace
 - **Format Detection** — Automatically identifies GGUF, MLX, safetensors, and PyTorch formats from filenames
 - **Quantization Detection** — Extracts quantization level (Q4_K_M, 4bit, 8bit, fp16, bf16) from filenames
 - **Storage Management** — Set disk limits and auto-prune oldest models when space runs low
 - **Telegram Notifications** — Get pinged when new models are downloaded
-- **Scheduled Monitoring** — Runs on a configurable interval with daemon mode and PID management
+- **Scheduled Monitoring** — Runs on a configurable interval with embedded scheduler
+- **Low-RAM Safe** — Configurable memory guard and single-file streaming — runs on a Core2Duo with 1.7GB RAM alongside other services
 - **Local-First** — Everything stored in SQLite at `~/.config/modelarr/`. No cloud dependencies beyond HuggingFace.
 
 ---
@@ -34,55 +36,77 @@ uv sync
 Verify:
 ```bash
 uv run modelarr --version
-# modelarr 0.1.0
+# modelarr 0.2.0
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Add watches
+### 1. Run the setup wizard
+
+```bash
+modelarr init
+```
+
+This walks you through: library path, storage limits, HuggingFace token, Telegram notifications, poll interval, and download safety settings.
+
+### 2. Add watches
 
 ```bash
 # Watch a specific model for updates
 modelarr watch add model mlx-community/Qwen3.5-27B-Claude-4.6-Opus-Distilled-MLX-4bit
 
-# Watch everything an author releases, filtered to MLX 4-bit
-modelarr watch add author Jackrong --format mlx --quant 4bit
+# Watch everything an author releases, filtered to GGUF
+modelarr watch add author bartowski --format gguf
 
 # Watch a search query
 modelarr watch add query "opus distilled MLX" --format mlx
 
-# Watch an author with no filters (get everything)
-modelarr watch add author Liquid4All
+# Watch a model family
+modelarr watch add family Qwen3.5 --quant 4bit
 ```
 
-### 2. Configure
+### 3. Start the web UI
 
 ```bash
-# Set where models are stored (required)
-modelarr config set library_path ~/models
-
-# Set disk limit (optional)
-modelarr config set max_storage_gb 500
-
-# Enable Telegram notifications (optional)
-modelarr config set telegram_token <your-bot-token>
-modelarr config set telegram_chat_id <your-chat-id>
+modelarr serve
 ```
 
-### 3. Run
+Open `http://localhost:8585` in your browser. The web UI includes a dashboard, watchlist manager, library browser, download manager, settings page, and HuggingFace search.
+
+Or use the CLI only:
 
 ```bash
-# One-off check — poll HuggingFace now and download any new matches
+# One-off check
 modelarr monitor check
 
-# Start the scheduler (polls every 60 minutes by default)
-modelarr monitor start
-
-# Or run as a daemon
+# Start the headless scheduler
 modelarr monitor start --daemon
 ```
+
+---
+
+## Web UI
+
+The web UI runs on port 8585 and embeds the monitor scheduler in the same process. Dark theme via Pico CSS, interactive updates via htmx — no JavaScript build step required.
+
+```bash
+modelarr serve                          # Start on default port 8585
+modelarr serve --port 9090              # Custom port
+modelarr serve --interval 30            # Poll every 30 minutes
+```
+
+### Pages
+
+| Page | URL | What it does |
+|------|-----|-------------|
+| **Dashboard** | `/` | Monitor status, library stats, active downloads, recent activity, quick actions |
+| **Watchlist** | `/watchlist` | Add/remove/toggle watches with filters — all inline via htmx |
+| **Library** | `/library` | Browse downloaded models, sort by date/size/name, filter by format, delete |
+| **Downloads** | `/downloads` | Active downloads with live progress, download history, manual download form |
+| **Settings** | `/settings` | All config in one form, Telegram test button |
+| **Search** | `/search` | Search HuggingFace with debounced input, add to watchlist or download directly |
 
 ---
 
@@ -95,7 +119,7 @@ modelarr monitor start --daemon
 | Type | What it does | Example |
 |------|-------------|---------|
 | `model` | Tracks a specific model repo for new commits | `modelarr watch add model mlx-community/Qwen3.5-27B-MLX-4bit` |
-| `author` | Tracks all models by an author | `modelarr watch add author Jackrong --format mlx` |
+| `author` | Tracks all models by an author | `modelarr watch add author Jackrong --format gguf` |
 | `query` | Searches HuggingFace for matching models | `modelarr watch add query "opus distilled" --format gguf` |
 | `family` | Tracks a model family by name | `modelarr watch add family Qwen3.5 --quant 4bit` |
 
@@ -175,15 +199,59 @@ modelarr config show
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `library_path` | Where to store downloaded models | `~/models` |
-| `interval` | Poll interval in minutes | `60` |
-| `telegram_token` | Telegram Bot API token | _(none)_ |
-| `telegram_chat_id` | Telegram chat ID for notifications | _(none)_ |
+| `library_path` | Where to store downloaded models | `~/.modelarr/library` |
+| `interval_minutes` | Poll interval in minutes | `60` |
 | `max_storage_gb` | Maximum disk usage in GB | _(unlimited)_ |
-| `auto_prune` | Auto-delete oldest models when over limit | `false` |
-| `storage_auto_prune` | Alias for auto_prune | `false` |
+| `storage_auto_prune` | Auto-delete oldest models when over limit | `false` |
+| `max_download_workers` | Parallel file downloads per model (1 = safest) | `1` |
+| `min_free_memory_mb` | Refuse downloads below this free RAM (0 = disable) | `200` |
+| `huggingface_token` | HuggingFace API token for private/gated models | _(none)_ |
+| `telegram_bot_token` | Telegram Bot API token | _(none)_ |
+| `telegram_chat_id` | Telegram chat ID for notifications | _(none)_ |
 
-All config stored in SQLite at `~/.config/modelarr/modelarr.db`.
+All config stored in SQLite at `~/.config/modelarr/modelarr.db`. Edit via CLI, web UI settings page, or the `modelarr init` setup wizard.
+
+---
+
+## Deployment
+
+### systemd (recommended for always-on servers)
+
+```ini
+[Unit]
+Description=modelarr - LLM Model Monitor Web UI
+After=network-online.target remote-fs.target
+Requires=remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mike
+Group=mike
+WorkingDirectory=/path/to/modelarr
+ExecStart=/path/to/modelarr/.venv/bin/modelarr serve --port 8585 --interval 60
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now modelarr
+```
+
+### Resource Requirements
+
+| | Minimum | Recommended |
+|---|---------|-------------|
+| **CPU** | Any (tested on Core2Duo) | 2+ cores |
+| **RAM** | 1.5 GB (with other services) | 4+ GB |
+| **Disk** | Depends on model collection | NAS or large SSD |
+| **Python** | 3.11+ | 3.12+ |
+
+modelarr itself uses ~55MB RAM. Downloads stream to disk in 1MB chunks regardless of model size.
 
 ---
 
@@ -191,11 +259,17 @@ All config stored in SQLite at `~/.config/modelarr/modelarr.db`.
 
 ```mermaid
 flowchart TD
-    CLI["modelarr CLI (Typer)"]
-    CLI --> WL["Watchlist Manager"]
-    CLI --> LIB["Library Manager"]
-    CLI --> DL["Download Engine"]
-    CLI --> MON["Monitor (APScheduler)"]
+    WEB["Web UI (FastAPI + htmx)"]
+    CLI["CLI (Typer)"]
+    WEB --> WL["Watchlist Manager"]
+    WEB --> LIB["Library Manager"]
+    WEB --> DL["Download Engine"]
+    WEB --> MON["Monitor (APScheduler)"]
+    WEB --> HF
+    CLI --> WL
+    CLI --> LIB
+    CLI --> DL
+    CLI --> MON
 
     WL --> DB[("SQLite")]
     LIB --> DB
@@ -209,19 +283,19 @@ flowchart TD
     MON --> TG["Telegram Notification"]
 ```
 
+### How Downloads Work
+
+Files are downloaded one at a time via streaming HTTP in 1MB chunks. This keeps memory usage constant regardless of model size — a 50GB GGUF file uses the same ~55MB RSS as a 50KB config file. Progress is tracked per-file and updated in the database every 10MB, visible in real-time on the web UI.
+
 ### How the Monitor Works
 
 ```
 Every N minutes:
   1. Load all enabled watchlist entries
-  2. For each watch, query HuggingFace API:
-     - model: check for new commits
-     - author: list all models by author
-     - query: search HuggingFace
-     - family: search by family name
+  2. For each watch, query HuggingFace API
   3. Apply filters (format, quantization, size)
   4. Compare against known models in DB
-  5. Download new matches via huggingface_hub
+  5. Download new matches via streaming HTTP
   6. Send Telegram notification for each download
   7. Check storage limits, prune if needed
 ```
@@ -234,7 +308,7 @@ Every N minutes:
 # Install all dependencies (including dev tools)
 uv sync
 
-# Run tests (187 tests)
+# Run tests (213 tests)
 uv run pytest
 
 # Lint
@@ -248,16 +322,22 @@ uv run mypy src/
 
 ```
 src/modelarr/
-├── cli.py          # Typer CLI with all command groups
-├── db.py           # SQLite schema and connection management
-├── models.py       # Pydantic models (WatchlistEntry, ModelRecord, etc.)
-├── store.py        # CRUD operations for all entities
-├── hf_client.py    # HuggingFace API client with format/quant detection
-├── matcher.py      # Watchlist matching engine
-├── downloader.py   # Download manager with resume support
-├── monitor.py      # APScheduler-based polling monitor
-├── notifier.py     # Telegram Bot API notifications
-└── storage.py      # Disk limits and auto-prune
+├── cli.py              # Typer CLI with all command groups
+├── db.py               # SQLite schema and connection management
+├── models.py           # Pydantic models (WatchlistEntry, ModelRecord, etc.)
+├── store.py            # CRUD operations for all entities
+├── hf_client.py        # HuggingFace API client with format/quant detection
+├── matcher.py          # Watchlist matching engine
+├── downloader.py       # Streaming download manager with progress tracking
+├── monitor.py          # APScheduler-based polling monitor
+├── notifier.py         # Telegram Bot API notifications
+├── storage.py          # Disk limits and auto-prune
+└── web/
+    ├── app.py          # FastAPI app factory with embedded scheduler
+    ├── deps.py         # Dependency injection
+    ├── routes/         # Route handlers (dashboard, watchlist, library, etc.)
+    ├── templates/      # Jinja2 templates with htmx
+    └── static/         # Vendored htmx.min.js + CSS
 ```
 
 ---

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "modelarr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Radarr/Sonarr for LLM models. Monitors HuggingFace for new releases matching a watchlist and auto-downloads them to a local library."
 authors = [
     {name = "Mike Morris"},
