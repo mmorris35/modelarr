@@ -149,28 +149,34 @@ class WatchlistMatcher:
         return filtered
 
     def find_new_models(
-        self, store: ModelarrStore
+        self, store: ModelarrStore, backfill: bool = False
     ) -> list[tuple[WatchlistEntry, ModelInfo]]:
-        """Find all new models matching enabled watchlist entries.
+        """Find models matching enabled watchlist entries.
 
-        Checks all enabled watches in the store and returns matches that
-        are not already in the database.
+        Checks all enabled watches in the store and returns matches.
+        By default, only returns models not already in the database.
+        With backfill=True, returns all matches that aren't already
+        downloaded (have no local_path), useful for initial setup.
 
         Args:
             store: ModelarrStore instance for checking known models
+            backfill: If True, include known-but-not-downloaded models
 
         Returns:
-            List of (WatchlistEntry, ModelInfo) tuples for new matches
+            List of (WatchlistEntry, ModelInfo) tuples for matches
         """
-        new_models = []
+        results = []
         watches = store.list_watches(enabled_only=True)
 
         for watch in watches:
             matches = self.check_watch(watch)
             for model_info in matches:
-                # Check if model is already in store
                 existing = store.get_model_by_repo(model_info.repo_id)
                 if existing is None:
-                    new_models.append((watch, model_info))
+                    # Brand new model — always include
+                    results.append((watch, model_info))
+                elif backfill and not existing.local_path:
+                    # Known but not downloaded — include in backfill
+                    results.append((watch, model_info))
 
-        return new_models
+        return results

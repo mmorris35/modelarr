@@ -663,7 +663,14 @@ def monitor_status() -> None:
 
 
 @monitor_app.command()
-def check() -> None:
+def check(
+    backfill: bool = typer.Option(
+        False,
+        "--backfill",
+        "-b",
+        help="Download all matching models, not just new ones. Useful for initial setup.",
+    ),
+) -> None:
     """Run a single monitor check cycle."""
     try:
         store = _get_store()
@@ -684,8 +691,11 @@ def check() -> None:
             notifier=notifier,
         )
 
-        console.print("[cyan]Running monitor check...[/cyan]")
-        results = monitor.run_once()
+        if backfill:
+            console.print("[cyan]Running backfill — downloading all matching models...[/cyan]")
+        else:
+            console.print("[cyan]Running monitor check...[/cyan]")
+        results = monitor.run_once(backfill=backfill)
 
         if results:
             console.print(f"[green]✓[/green] Downloaded {len(results)} model(s)")
@@ -694,7 +704,10 @@ def check() -> None:
                     f"  - {model.author}/{model.name} ({_format_bytes(model.size_bytes)})"
                 )
         else:
-            console.print("[yellow]No new models found.[/yellow]")
+            if backfill:
+                console.print("[yellow]No matching models to download.[/yellow]")
+            else:
+                console.print("[yellow]No new models found.[/yellow]")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")

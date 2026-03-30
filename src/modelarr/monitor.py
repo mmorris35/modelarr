@@ -78,11 +78,14 @@ class ModelarrMonitor:
                 ModelarrMonitor.PID_FILE.unlink()
 
     def check_and_download(
-        self,
+        self, backfill: bool = False
     ) -> list[tuple[WatchlistEntry, ModelInfo]]:
         """Run a single poll cycle.
 
         Finds new models, downloads them, and sends notifications.
+
+        Args:
+            backfill: If True, also download known-but-not-downloaded models
 
         Returns:
             List of (WatchlistEntry, ModelInfo) tuples for downloaded models
@@ -90,8 +93,8 @@ class ModelarrMonitor:
         downloaded = []
 
         try:
-            # Find new models from all enabled watches
-            new_matches = self.matcher.find_new_models(self.store)
+            # Find models from all enabled watches
+            new_matches = self.matcher.find_new_models(self.store, backfill=backfill)
 
             for watch, model_info in new_matches:
                 try:
@@ -187,10 +190,15 @@ class ModelarrMonitor:
             ModelarrMonitor._delete_pid_file()
         return is_alive
 
-    def run_once(self) -> list[tuple[WatchlistEntry, ModelInfo]]:
+    def run_once(
+        self, backfill: bool = False
+    ) -> list[tuple[WatchlistEntry, ModelInfo]]:
         """Run a single poll cycle for CLI use.
+
+        Args:
+            backfill: If True, also download known-but-not-downloaded models
 
         Returns:
             List of (WatchlistEntry, ModelInfo) tuples for downloaded models
         """
-        return self.check_and_download()
+        return self.check_and_download(backfill=backfill)

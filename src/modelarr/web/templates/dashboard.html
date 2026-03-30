@@ -45,7 +45,8 @@
 
 <!-- Quick Actions -->
 <div class="button-group" style="margin-bottom: 2rem;">
-    <button hx-post="/dashboard/check" hx-target="#toast-container" hx-swap="beforeend">Run Check Now</button>
+    <button hx-post="/dashboard/check" hx-target="#toast-container" hx-swap="beforeend">Check for New</button>
+    <button hx-post="/dashboard/backfill" hx-target="#toast-container" hx-swap="beforeend" class="secondary" hx-confirm="Download ALL matching models from your watchlist?">Backfill Library</button>
     <a href="/library" class="button secondary">View Library</a>
     <a href="/settings" class="button secondary">Settings</a>
 </div>

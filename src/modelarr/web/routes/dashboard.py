@@ -1,7 +1,7 @@
 """Dashboard routes for modelarr web UI."""
 
-
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -110,6 +110,33 @@ async def dashboard(
     return HTMLResponse(html)
 
 
+def _build_monitor(store: ModelarrStore) -> Any:
+    """Build a ModelarrMonitor from store config."""
+    from pathlib import Path
+
+    from modelarr.hf_client import HFClient
+    from modelarr.matcher import WatchlistMatcher
+    from modelarr.monitor import ModelarrMonitor
+    from modelarr.notifier import TelegramNotifier
+
+    hf_client = HFClient(token=store.get_config("huggingface_token"))
+    matcher = WatchlistMatcher(hf_client)
+    library_path_str = store.get_config("library_path")
+    library_path = (
+        Path(library_path_str) if library_path_str
+        else Path.home() / ".modelarr" / "library"
+    )
+    downloader = DownloadManager(
+        store=store,
+        library_path=library_path,
+        hf_token=store.get_config("huggingface_token"),
+    )
+    notifier = TelegramNotifier.from_config(store)
+    return ModelarrMonitor(
+        store=store, matcher=matcher, downloader=downloader, notifier=notifier,
+    )
+
+
 @router.post("/dashboard/check")
 async def dashboard_check(
     request: Request,
@@ -117,53 +144,40 @@ async def dashboard_check(
 ):
     """Trigger a monitor check and return results as htmx partial."""
     try:
-        from modelarr.downloader import DownloadManager
-        from modelarr.hf_client import HFClient
-        from modelarr.matcher import WatchlistMatcher
-        from modelarr.monitor import ModelarrMonitor
-        from modelarr.notifier import TelegramNotifier
-
-        hf_client = HFClient(token=store.get_config("huggingface_token"))
-        matcher = WatchlistMatcher(hf_client)
-
-        from pathlib import Path
-
-        library_path_str = store.get_config("library_path")
-        if library_path_str:
-            library_path = Path(library_path_str)
-        else:
-            library_path = Path.home() / ".modelarr" / "library"
-        downloader = DownloadManager(
-            store=store,
-            library_path=library_path,
-            hf_token=store.get_config("huggingface_token"),
-        )
-
-        notifier = TelegramNotifier.from_config(store)
-        monitor = ModelarrMonitor(
-            store=store,
-            matcher=matcher,
-            downloader=downloader,
-            notifier=notifier,
-        )
-
+        monitor = _build_monitor(store)
         results = monitor.run_once()
-        result_count = len(results)
 
-        if result_count > 0:
-            msg = (
-                f"<strong>Success!</strong> Downloaded {result_count} model(s)."
-            )
-            html = _toast_html(msg, is_error=False)
-        else:
-            html = (
-                '<div class="toast"><strong>Check complete.</strong>'
-                " No new models found.</div>"
-            )
+        if len(results) > 0:
+            msg = f"<strong>Success!</strong> Downloaded {len(results)} model(s)."
+            return HTMLResponse(_toast_html(msg, is_error=False))
 
-        return HTMLResponse(html)
+        return HTMLResponse(
+            '<div class="toast"><strong>Check complete.</strong>'
+            " No new models found.</div>"
+        )
 
     except Exception as e:
-        msg = f"<strong>Error:</strong> {str(e)}"
-        html = _toast_html(msg, is_error=True)
-        return HTMLResponse(html)
+        return HTMLResponse(_toast_html(f"<strong>Error:</strong> {e}", is_error=True))
+
+
+@router.post("/dashboard/backfill")
+async def dashboard_backfill(
+    request: Request,
+    store: ModelarrStore = Depends(get_store),
+):
+    """Download all matching models from watchlist (backfill)."""
+    try:
+        monitor = _build_monitor(store)
+        results = monitor.run_once(backfill=True)
+
+        if len(results) > 0:
+            msg = f"<strong>Backfill started!</strong> Queued {len(results)} model(s)."
+            return HTMLResponse(_toast_html(msg, is_error=False))
+
+        return HTMLResponse(
+            '<div class="toast"><strong>Backfill complete.</strong>'
+            " All matching models already downloaded.</div>"
+        )
+
+    except Exception as e:
+        return HTMLResponse(_toast_html(f"<strong>Error:</strong> {e}", is_error=True))
