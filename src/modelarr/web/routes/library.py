@@ -50,6 +50,7 @@ async def library_page(
         max_storage_gb=max_storage_gb or "None",
         sort=sort,
         format_filter=format_filter,
+        format_bytes=format_bytes,
     )
     return HTMLResponse(html)
 
