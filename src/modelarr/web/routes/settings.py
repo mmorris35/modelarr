@@ -36,6 +36,8 @@ async def settings_page(
     huggingface_token = store.get_config("huggingface_token") or ""
     telegram_bot_token = store.get_config("telegram_bot_token") or ""
     telegram_chat_id = store.get_config("telegram_chat_id") or ""
+    max_download_workers = store.get_config("max_download_workers") or "1"
+    min_free_memory_mb = store.get_config("min_free_memory_mb") or "200"
 
     template = request.app.jinja_env.get_template("settings.html")
     html = template.render(
@@ -46,6 +48,8 @@ async def settings_page(
         huggingface_token=huggingface_token,
         telegram_bot_token=telegram_bot_token,
         telegram_chat_id=telegram_chat_id,
+        max_download_workers=max_download_workers,
+        min_free_memory_mb=min_free_memory_mb,
     )
     return HTMLResponse(html)
 
@@ -66,6 +70,8 @@ async def save_settings(
         huggingface_token = str(data.get("huggingface_token", ""))
         telegram_bot_token = str(data.get("telegram_bot_token", ""))
         telegram_chat_id = str(data.get("telegram_chat_id", ""))
+        max_download_workers = str(data.get("max_download_workers", ""))
+        min_free_memory_mb = str(data.get("min_free_memory_mb", ""))
 
         if library_path:
             store.set_config("library_path", library_path)
@@ -82,6 +88,10 @@ async def save_settings(
             store.set_config("telegram_bot_token", telegram_bot_token)
         if telegram_chat_id:
             store.set_config("telegram_chat_id", telegram_chat_id)
+        if max_download_workers:
+            store.set_config("max_download_workers", max_download_workers)
+        if min_free_memory_mb:
+            store.set_config("min_free_memory_mb", min_free_memory_mb)
 
         msg = "<strong>Success!</strong> Settings saved."
         return _toast_html(msg, is_error=False)

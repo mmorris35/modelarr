@@ -171,6 +171,24 @@ def init() -> None:
     store.set_config("interval_minutes", str(interval))
     console.print(f"  [green]✓[/green] Poll interval: {interval} minutes")
 
+    # 7. Download tuning (optional)
+    console.print()
+    if typer.confirm("Tune download settings? (recommended for low-RAM systems)", default=False):
+        max_workers = typer.prompt(
+            "Max parallel file downloads per model (1 = safest)", default=1, type=int
+        )
+        store.set_config("max_download_workers", str(max_workers))
+        console.print(f"  [green]✓[/green] Max download workers: {max_workers}")
+
+        min_free = typer.prompt(
+            "Minimum free memory before downloading (MB, 0 = disable)", default=200, type=int
+        )
+        store.set_config("min_free_memory_mb", str(min_free))
+        console.print(f"  [green]✓[/green] Memory guard: {min_free} MB")
+    else:
+        store.set_config("max_download_workers", "1")
+        store.set_config("min_free_memory_mb", "200")
+
     # Summary
     console.print()
     console.print("[bold green]Setup complete![/bold green]")

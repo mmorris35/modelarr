@@ -40,6 +40,22 @@
     </fieldset>
 
     <fieldset>
+        <legend>Downloads</legend>
+
+        <div>
+            <label for="max_download_workers">Max Parallel File Downloads</label>
+            <input type="number" name="max_download_workers" id="max_download_workers" value="{{ max_download_workers }}" min="1" max="16">
+            <small>Files downloaded per model. 1 = safest for low-RAM systems, higher = faster on beefy hardware.</small>
+        </div>
+
+        <div>
+            <label for="min_free_memory_mb">Min Free Memory (MB)</label>
+            <input type="number" name="min_free_memory_mb" id="min_free_memory_mb" value="{{ min_free_memory_mb }}" min="0">
+            <small>Refuse downloads if available RAM drops below this. 0 = disable guard.</small>
+        </div>
+    </fieldset>
+
+    <fieldset>
         <legend>HuggingFace</legend>
 
         <div>

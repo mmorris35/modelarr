@@ -60,7 +60,7 @@ def test_download_manager_with_token(library_path, tmp_db):
 def test_download_model_success(mock_snapshot, downloader, sample_model):
     """Test successful model download."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("fake model data")
@@ -96,7 +96,7 @@ def test_download_model_creates_directory_structure(
 ):
     """Test that download creates correct directory structure."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")
@@ -128,7 +128,7 @@ def test_download_model_failure(mock_snapshot, downloader, sample_model):
 def test_download_model_lifecycle(mock_snapshot, downloader, sample_model):
     """Test download lifecycle transitions."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")
@@ -150,7 +150,7 @@ def test_download_model_lifecycle(mock_snapshot, downloader, sample_model):
 def test_get_library_size(mock_snapshot, downloader, sample_model):
     """Test library size calculation."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_bytes(b"x" * 1000000)  # 1MB
@@ -175,7 +175,7 @@ def test_list_local_models_empty(downloader):
 def test_list_local_models_with_downloads(mock_snapshot, downloader, sample_model):
     """Test listing downloaded models."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")
@@ -202,7 +202,7 @@ def test_delete_local_model_not_found(downloader):
 def test_delete_local_model_success(mock_snapshot, downloader, sample_model):
     """Test successful model deletion."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")
@@ -254,7 +254,7 @@ def test_download_model_token_passed(mock_snapshot, downloader, sample_model):
         downloader.store, downloader.library_path, hf_token=token
     )
 
-    def create_files(repo_id, local_dir, resume_download, token_arg):
+    def create_files(repo_id, local_dir, resume_download, token_arg, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")
@@ -271,7 +271,7 @@ def test_download_model_token_passed(mock_snapshot, downloader, sample_model):
 def test_download_model_updates_model_record(mock_snapshot, downloader, sample_model):
     """Test that model record is properly updated after download."""
 
-    def create_files(repo_id, local_dir, resume_download, token):
+    def create_files(repo_id, local_dir, resume_download, token, **kwargs):
         path = Path(local_dir)
         path.mkdir(parents=True, exist_ok=True)
         (path / "model.gguf").write_text("data")

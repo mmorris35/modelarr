@@ -1,5 +1,6 @@
 """Download manager for modelarr with resume support."""
 
+import logging
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +11,20 @@ from huggingface_hub import snapshot_download
 from modelarr.models import DownloadRecord, ModelInfo, ModelRecord
 from modelarr.storage import StorageManager
 from modelarr.store import ModelarrStore
+
+logger = logging.getLogger(__name__)
+
+
+def _get_available_memory_mb() -> int | None:
+    """Get available system memory in MB. Returns None if unavailable."""
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) // 1024
+    except (FileNotFoundError, ValueError, IndexError):
+        pass
+    return None
 
 
 class DownloadManager:
@@ -106,12 +121,28 @@ class DownloadManager:
             local_path = self.library_path / model.author / model.name
             local_path.mkdir(parents=True, exist_ok=True)
 
-            # Download with resume support
+            # Check memory guard before downloading
+            min_free_mb = int(
+                self.store.get_config("min_free_memory_mb", "200") or "200"
+            )
+            if min_free_mb > 0:
+                avail = _get_available_memory_mb()
+                if avail is not None and avail < min_free_mb:
+                    raise RuntimeError(
+                        f"Insufficient memory: {avail}MB available, "
+                        f"{min_free_mb}MB required (configurable via min_free_memory_mb)"
+                    )
+
+            # Download with resume support, bounded parallelism
+            max_workers = int(
+                self.store.get_config("max_download_workers", "1") or "1"
+            )
             snapshot_download(  # type: ignore[call-overload]
                 repo_id=model.repo_id,
                 local_dir=str(local_path),
                 resume_download=True,
                 token=self.hf_token,
+                max_workers=max_workers,
             )
 
             # Calculate actual downloaded size
