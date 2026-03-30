@@ -78,6 +78,14 @@ class HFClient:
                 name=repo_id_split[1] if len(repo_id_split) > 1 else repo_id,
             )
 
+        # If files list is empty, fetch explicitly
+        if not model_info.files:
+            model_info.files = self.get_repo_files(repo_id)
+            if not model_info.size_bytes and model_info.files:
+                model_info.size_bytes = HFClient.calculate_size(
+                    model_info.files
+                )
+
         return model_info
 
     def get_repo_files(self, repo_id: str) -> list[dict]:
