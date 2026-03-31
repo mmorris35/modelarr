@@ -95,6 +95,40 @@
             <button type="submit">Save Settings</button>
         </div>
     </fieldset>
+
+    <fieldset>
+        <legend>Weekly Digest</legend>
+
+        <div>
+            <label for="digest_enabled">
+                <input type="checkbox" name="digest_enabled" id="digest_enabled" {% if digest_enabled %}checked{% endif %}>
+                Enable weekly digest notifications
+            </label>
+        </div>
+
+        <div>
+            <label for="digest_day">Digest Day</label>
+            <select name="digest_day" id="digest_day">
+                <option value="monday" {% if digest_day == 'monday' %}selected{% endif %}>Monday</option>
+                <option value="tuesday" {% if digest_day == 'tuesday' %}selected{% endif %}>Tuesday</option>
+                <option value="wednesday" {% if digest_day == 'wednesday' %}selected{% endif %}>Wednesday</option>
+                <option value="thursday" {% if digest_day == 'thursday' %}selected{% endif %}>Thursday</option>
+                <option value="friday" {% if digest_day == 'friday' %}selected{% endif %}>Friday</option>
+                <option value="saturday" {% if digest_day == 'saturday' %}selected{% endif %}>Saturday</option>
+                <option value="sunday" {% if digest_day == 'sunday' %}selected{% endif %}>Sunday</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="digest_hour">Digest Time (hour)</label>
+            <input type="number" name="digest_hour" id="digest_hour" value="{{ digest_hour }}" min="0" max="23">
+        </div>
+
+        <div class="button-group">
+            <button type="submit">Save Settings</button>
+            <button type="button" hx-post="/settings/digest-test" hx-target="#toast-container" hx-swap="beforeend" class="secondary">Test Digest</button>
+        </div>
+    </fieldset>
 </form>
 
 {% endblock %}

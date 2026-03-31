@@ -98,6 +98,64 @@ class TelegramNotifier:
         except Exception:
             return False
 
+    def send_digest(self, store: ModelarrStore) -> bool:
+        """Send a weekly digest of downloaded models.
+
+        Args:
+            store: ModelarrStore instance with download history
+
+        Returns:
+            True if sent successfully, False otherwise (never raises)
+        """
+        try:
+            # Get download history for the past 7 days
+            downloads = store.get_download_history(limit=1000)
+            completed = [
+                d for d in downloads
+                if d.status == "complete" and d.completed_at
+            ]
+
+            if not completed:
+                message = "📊 Weekly Digest\n\n" \
+                          "No new models downloaded this week."
+            else:
+                total_size = sum(d.total_bytes or 0 for d in completed)
+                size_gb = total_size / (1024**3)
+                size_str = f"{size_gb:.2f} GB"
+
+                message = (
+                    f"📊 Weekly Digest\n\n"
+                    f"✅ {len(completed)} models downloaded\n"
+                    f"📦 Total size: {size_str}\n\n"
+                )
+
+                # List model names (try to get from store)
+                model_list = []
+                for dl in completed[:20]:  # Limit to first 20
+                    model = store.get_model_by_id(dl.model_id)
+                    if model:
+                        model_list.append(f"  • {model.author}/{model.name}")
+
+                if model_list:
+                    message += "Downloaded models:\n" + "\n".join(model_list)
+                    if len(completed) > 20:
+                        message += f"\n  ... and {len(completed) - 20} more"
+
+            response = httpx.post(
+                self.api_url,
+                json={
+                    "chat_id": self.chat_id,
+                    "text": message,
+                    "parse_mode": "HTML",
+                },
+                timeout=10,
+            )
+
+            return response.status_code == 200
+
+        except Exception:
+            return False
+
     @classmethod
     def from_config(
         cls, store: ModelarrStore

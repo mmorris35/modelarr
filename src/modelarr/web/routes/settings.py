@@ -39,6 +39,9 @@ async def settings_page(
     max_download_workers = store.get_config("max_download_workers") or "1"
     min_free_memory_mb = store.get_config("min_free_memory_mb") or "200"
     ollama_host = store.get_config("ollama_host") or ""
+    digest_enabled = store.get_config("digest_enabled") or "false"
+    digest_day = store.get_config("digest_day") or "monday"
+    digest_hour = store.get_config("digest_hour") or "9"
 
     template = request.app.jinja_env.get_template("settings.html")
     html = template.render(
@@ -52,6 +55,9 @@ async def settings_page(
         max_download_workers=max_download_workers,
         min_free_memory_mb=min_free_memory_mb,
         ollama_host=ollama_host,
+        digest_enabled=digest_enabled.lower() == "true",
+        digest_day=digest_day,
+        digest_hour=digest_hour,
     )
     return HTMLResponse(html)
 
@@ -75,6 +81,9 @@ async def save_settings(
         max_download_workers = str(data.get("max_download_workers", ""))
         min_free_memory_mb = str(data.get("min_free_memory_mb", ""))
         ollama_host = str(data.get("ollama_host", ""))
+        digest_enabled = str(data.get("digest_enabled", "")) == "on"
+        digest_day = str(data.get("digest_day", "monday"))
+        digest_hour = str(data.get("digest_hour", "9"))
 
         if library_path:
             store.set_config("library_path", library_path)
@@ -97,6 +106,11 @@ async def save_settings(
             store.set_config("min_free_memory_mb", min_free_memory_mb)
         if ollama_host:
             store.set_config("ollama_host", ollama_host)
+        store.set_config("digest_enabled", "true" if digest_enabled else "false")
+        if digest_day:
+            store.set_config("digest_day", digest_day)
+        if digest_hour:
+            store.set_config("digest_hour", digest_hour)
 
         msg = "<strong>Success!</strong> Settings saved."
         return _toast_html(msg, is_error=False)
@@ -124,6 +138,31 @@ async def telegram_test(
             return _toast_html(msg, is_error=False)
         else:
             msg = "<strong>Error:</strong> Failed to send test message"
+            return _toast_html(msg, is_error=True)
+
+    except Exception as e:
+        msg = f"<strong>Error:</strong> {str(e)}"
+        return _toast_html(msg, is_error=True)
+
+
+@router.post("/settings/digest-test")
+async def digest_test(
+    request: Request,
+    store: ModelarrStore = Depends(get_store),
+):
+    """Send a test digest notification."""
+    try:
+        notifier = TelegramNotifier.from_config(store)
+        if not notifier:
+            msg = "<strong>Error:</strong> Telegram not configured"
+            return _toast_html(msg, is_error=True)
+
+        success = notifier.send_digest(store)
+        if success:
+            msg = "<strong>Success!</strong> Test digest sent."
+            return _toast_html(msg, is_error=False)
+        else:
+            msg = "<strong>Error:</strong> Failed to send test digest"
             return _toast_html(msg, is_error=True)
 
     except Exception as e:

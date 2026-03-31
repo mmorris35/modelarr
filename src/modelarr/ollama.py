@@ -1,9 +1,7 @@
 """Ollama API client for pushing models and managing Modelfiles."""
 
-import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import httpx
 

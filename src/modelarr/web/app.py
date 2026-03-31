@@ -4,6 +4,8 @@ import threading
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import]
+from apscheduler.triggers.cron import CronTrigger  # type: ignore[import]
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,12 +82,48 @@ async def lifespan(app: FastAPI):
     monitor_thread = threading.Thread(target=run_monitor, daemon=True)
     monitor_thread.start()
 
+    # Set up digest scheduler
+    digest_scheduler = None
+    digest_enabled_str = store.get_config("digest_enabled") or "false"
+    digest_enabled = digest_enabled_str.lower() == "true"
+    if digest_enabled and notifier:
+        digest_day_str = store.get_config("digest_day") or "monday"
+        digest_hour_str = store.get_config("digest_hour") or "9"
+        digest_day = digest_day_str.lower()
+        digest_hour = int(digest_hour_str)
+
+        digest_scheduler = BackgroundScheduler()
+        digest_scheduler.start()
+
+        def send_weekly_digest():
+            with suppress(Exception):
+                notifier.send_digest(store)
+
+        # Map day names to day_of_week numbers (0=Monday, 6=Sunday)
+        day_map = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        }
+        day_of_week = day_map.get(digest_day, 0)
+
+        digest_scheduler.add_job(
+            send_weekly_digest,
+            CronTrigger(day_of_week=day_of_week, hour=digest_hour, minute=0),
+            name="digest",
+        )
+
     # Store in app state for route access
     app.state.store = store
     app.state.monitor = _monitor
     app.state.hf_client = hf_client
     app.state.downloader = downloader
     app.state.storage_manager = storage_manager
+    app.state.digest_scheduler = digest_scheduler
 
     yield
 
@@ -93,6 +131,10 @@ async def lifespan(app: FastAPI):
     if _monitor:
         with suppress(Exception):
             _monitor.stop()
+
+    if digest_scheduler:
+        with suppress(Exception):
+            digest_scheduler.shutdown()
 
 
 def create_app() -> FastAPI:
