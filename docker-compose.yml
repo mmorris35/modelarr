@@ -1,0 +1,13 @@
+services:
+  modelarr:
+    build: .
+    ports:
+      - "8585:8585"
+    volumes:
+      - modelarr-config:/root/.config/modelarr
+      - ${LIBRARY_PATH:-./library}:/models
+    environment:
+      - MODELARR_LIBRARY_PATH=/models
+    restart: unless-stopped
+volumes:
+  modelarr-config:

@@ -325,13 +325,34 @@ Every N minutes:
 
 ---
 
+## Docker
+
+Deploy modelarr in a container:
+
+```bash
+# Build and run
+docker compose up -d
+
+# Or, manually:
+docker build -t modelarr .
+docker run -d -p 8585:8585 \
+  -v modelarr-config:/root/.config/modelarr \
+  -v /path/to/models:/models \
+  -e MODELARR_LIBRARY_PATH=/models \
+  modelarr
+```
+
+The container exposes the web UI on port 8585 and persists configuration in a named volume.
+
+---
+
 ## Development
 
 ```bash
 # Install all dependencies (including dev tools)
 uv sync
 
-# Run tests (213 tests)
+# Run tests (244 tests)
 uv run pytest
 
 # Lint
