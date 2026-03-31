@@ -15,6 +15,7 @@ from modelarr.matcher import WatchlistMatcher
 from modelarr.models import WatchlistFilters
 from modelarr.monitor import ModelarrMonitor
 from modelarr.notifier import TelegramNotifier
+from modelarr.ollama import OllamaClient
 from modelarr.store import ModelarrStore
 from modelarr.web.app import create_app
 
@@ -34,12 +35,14 @@ library_app = typer.Typer(help="Manage local model library")
 download_app = typer.Typer(help="Download models")
 monitor_app = typer.Typer(help="Monitor and scheduling")
 config_app = typer.Typer(help="Configuration management")
+ollama_app = typer.Typer(help="Ollama integration")
 
 app.add_typer(watch_app, name="watch")
 app.add_typer(library_app, name="library")
 app.add_typer(download_app, name="download")
 app.add_typer(monitor_app, name="monitor")
 app.add_typer(config_app, name="config")
+app.add_typer(ollama_app, name="ollama")
 
 
 def version_callback(value: bool) -> None:
@@ -188,6 +191,16 @@ def init() -> None:
     else:
         store.set_config("max_download_workers", "1")
         store.set_config("min_free_memory_mb", "200")
+
+    # 8. Ollama integration (optional)
+    console.print()
+    if typer.confirm("Enable Ollama integration?", default=False):
+        ollama_host = typer.prompt(
+            "Ollama API host",
+            default="http://localhost:11434",
+        )
+        store.set_config("ollama_host", ollama_host)
+        console.print(f"  [green]✓[/green] Ollama host: {ollama_host}")
 
     # Summary
     console.print()
@@ -708,6 +721,107 @@ def check(
                 console.print("[yellow]No matching models to download.[/yellow]")
             else:
                 console.print("[yellow]No new models found.[/yellow]")
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+
+
+# ============================================================================
+# OLLAMA COMMANDS
+# ============================================================================
+
+
+@ollama_app.command()
+def push(
+    repo_id: str = typer.Argument(..., help="Repository ID (e.g., author/model-name)"),
+    name: str = typer.Option(
+        None, "--name", "-n", help="Custom name for model in Ollama"
+    ),
+) -> None:
+    """Push a downloaded GGUF model to Ollama."""
+    try:
+        store = _get_store()
+        ollama_host = store.get_config("ollama_host") or "http://localhost:11434"
+
+        # Get the model from store
+        model = store.get_model_by_repo(repo_id)
+        if not model:
+            console.print(f"[red]Error:[/red] Model not found: {repo_id}")
+            raise typer.Exit(code=1) from None
+
+        if model.format != "gguf":
+            console.print(f"[red]Error:[/red] Model is not GGUF format: {model.format}")
+            raise typer.Exit(code=1) from None
+
+        if not model.local_path:
+            console.print("[red]Error:[/red] Model not downloaded locally")
+            raise typer.Exit(code=1) from None
+
+        client = OllamaClient(host=ollama_host)
+        console.print(f"[cyan]Pushing {repo_id} to Ollama...[/cyan]")
+
+        if client.push_model(model, model_name=name):
+            console.print("[green]✓[/green] Model pushed to Ollama")
+        else:
+            console.print("[red]Error:[/red] Failed to push model to Ollama")
+            raise typer.Exit(code=1) from None
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+
+
+@ollama_app.command()
+def list() -> None:
+    """Show models currently loaded in Ollama."""
+    try:
+        store = _get_store()
+        ollama_host = store.get_config("ollama_host") or "http://localhost:11434"
+
+        client = OllamaClient(host=ollama_host)
+        models = client.list_models()
+
+        if not models:
+            console.print("[yellow]No models loaded in Ollama[/yellow]")
+            return
+
+        table = Table(title="Ollama Models")
+        table.add_column("Name", style="cyan")
+        table.add_column("Size", style="green")
+        table.add_column("Modified", style="yellow")
+
+        for model in models:
+            name = model.get("name", "Unknown")
+            size = _format_bytes(model.get("size"))
+            modified = model.get("modified_at", "Unknown")
+            table.add_row(name, size, modified)
+
+        console.print(table)
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(code=1) from None
+
+
+@ollama_app.command()
+def status() -> None:
+    """Show Ollama connection status."""
+    try:
+        store = _get_store()
+        ollama_host = store.get_config("ollama_host")
+        if not ollama_host:
+            ollama_host = "http://localhost:11434"
+
+        client = OllamaClient(host=ollama_host)
+
+        if client.is_connected():
+            console.print(f"[green]✓[/green] Connected to Ollama at {ollama_host}")
+            models = client.list_models()
+            console.print(f"[cyan]Models loaded:[/cyan] {len(models)}")
+        else:
+            console.print(f"[red]✗[/red] Cannot reach Ollama at {ollama_host}")
+            raise typer.Exit(code=1) from None
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}")

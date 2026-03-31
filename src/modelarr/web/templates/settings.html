@@ -82,6 +82,19 @@
             <button type="button" hx-post="/settings/telegram-test" hx-target="#toast-container" hx-swap="beforeend" class="secondary">Test Telegram</button>
         </div>
     </fieldset>
+
+    <fieldset>
+        <legend>Ollama Integration</legend>
+
+        <div>
+            <label for="ollama_host">API Host</label>
+            <input type="text" name="ollama_host" id="ollama_host" value="{{ ollama_host }}" placeholder="http://localhost:11434">
+        </div>
+
+        <div class="button-group">
+            <button type="submit">Save Settings</button>
+        </div>
+    </fieldset>
 </form>
 
 {% endblock %}

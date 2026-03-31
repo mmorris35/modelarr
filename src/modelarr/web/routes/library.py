@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
+from modelarr.ollama import OllamaClient
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_store
 
@@ -73,3 +74,31 @@ async def get_library_size(
     """Return total library size as an htmx partial."""
     total_size = downloader.get_library_size()
     return f"<span>{format_bytes(total_size)}</span>"
+
+
+@router.post("/library/{repo_id:path}/ollama")
+async def push_to_ollama(
+    repo_id: str,
+    store: ModelarrStore = Depends(get_store),
+):
+    """Push a GGUF model to Ollama."""
+    try:
+        model = store.get_model_by_repo(repo_id)
+        if not model:
+            return '<div class="toast error">Model not found</div>'
+
+        if model.format != "gguf":
+            return '<div class="toast error">Model is not GGUF format</div>'
+
+        if not model.local_path:
+            return '<div class="toast error">Model not downloaded locally</div>'
+
+        ollama_host = store.get_config("ollama_host") or "http://localhost:11434"
+        client = OllamaClient(host=ollama_host)
+
+        if client.push_model(model):
+            return f'<div class="toast success">Pushed {model.name} to Ollama</div>'
+        else:
+            return '<div class="toast error">Failed to push to Ollama</div>'
+    except Exception as e:
+        return f'<div class="toast error">Error: {str(e)}</div>'

@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from modelarr.downloader import DownloadManager
 from modelarr.models import DownloadRecord
+from modelarr.ollama import OllamaClient
 from modelarr.store import ModelarrStore
 from modelarr.web.deps import format_bytes, get_downloader, get_store
 
@@ -181,3 +182,31 @@ async def dashboard_backfill(
 
     except Exception as e:
         return HTMLResponse(_toast_html(f"<strong>Error:</strong> {e}", is_error=True))
+
+
+@router.get("/ollama/status")
+async def ollama_status(
+    store: ModelarrStore = Depends(get_store),
+):
+    """Get Ollama connection status as htmx partial."""
+    ollama_host = store.get_config("ollama_host")
+
+    if not ollama_host:
+        return HTMLResponse(
+            '<div class="ollama-status disconnected">'
+            '<strong>Ollama:</strong> Not configured</div>'
+        )
+
+    client = OllamaClient(host=ollama_host)
+
+    if client.is_connected():
+        models = client.list_models()
+        return HTMLResponse(
+            f'<div class="ollama-status connected">'
+            f'<strong>Ollama:</strong> Connected ({len(models)} models)</div>'
+        )
+    else:
+        return HTMLResponse(
+            '<div class="ollama-status disconnected">'
+            '<strong>Ollama:</strong> Disconnected</div>'
+        )

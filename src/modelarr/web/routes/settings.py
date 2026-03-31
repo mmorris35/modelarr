@@ -38,6 +38,7 @@ async def settings_page(
     telegram_chat_id = store.get_config("telegram_chat_id") or ""
     max_download_workers = store.get_config("max_download_workers") or "1"
     min_free_memory_mb = store.get_config("min_free_memory_mb") or "200"
+    ollama_host = store.get_config("ollama_host") or ""
 
     template = request.app.jinja_env.get_template("settings.html")
     html = template.render(
@@ -50,6 +51,7 @@ async def settings_page(
         telegram_chat_id=telegram_chat_id,
         max_download_workers=max_download_workers,
         min_free_memory_mb=min_free_memory_mb,
+        ollama_host=ollama_host,
     )
     return HTMLResponse(html)
 
@@ -72,6 +74,7 @@ async def save_settings(
         telegram_chat_id = str(data.get("telegram_chat_id", ""))
         max_download_workers = str(data.get("max_download_workers", ""))
         min_free_memory_mb = str(data.get("min_free_memory_mb", ""))
+        ollama_host = str(data.get("ollama_host", ""))
 
         if library_path:
             store.set_config("library_path", library_path)
@@ -92,6 +95,8 @@ async def save_settings(
             store.set_config("max_download_workers", max_download_workers)
         if min_free_memory_mb:
             store.set_config("min_free_memory_mb", min_free_memory_mb)
+        if ollama_host:
+            store.set_config("ollama_host", ollama_host)
 
         msg = "<strong>Success!</strong> Settings saved."
         return _toast_html(msg, is_error=False)
