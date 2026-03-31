@@ -1,5 +1,7 @@
 # modelarr
 
+[![CI](https://github.com/mmorris35/modelarr/actions/workflows/ci.yml/badge.svg)](https://github.com/mmorris35/modelarr/actions/workflows/ci.yml)
+
 **Radarr/Sonarr for LLM models.** Monitors HuggingFace for new releases matching your watchlist and auto-downloads them to a local library.
 
 ---
