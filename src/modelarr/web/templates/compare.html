@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Models - modelarr{% endblock %}
+
+{% block content %}
+<h1>Compare Models</h1>
+
+<!-- Model selector -->
+<form hx-get="/compare" hx-target="#comparison-table" hx-swap="outerHTML" style="margin-bottom: 2rem;">
+    <fieldset>
+        <legend>Select Models to Compare</legend>
+
+        {% if models %}
+            <div style="max-height: 400px; overflow-y: auto;">
+                {% for model in models %}
+                    <div style="margin-bottom: 0.5rem;">
+                        <label for="model-{{ model.id }}">
+                            <input
+                                type="checkbox"
+                                name="ids"
+                                value="{{ model.id }}"
+                                id="model-{{ model.id }}"
+                                hx-trigger="change"
+                                hx-swap="none"
+                            >
+                            <strong>{{ model.author }}/{{ model.name }}</strong>
+                            <small style="color: var(--muted-color);">{{ format_bytes(model.size_bytes) }}</small>
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <button type="submit">Compare Selected</button>
+            </div>
+        {% else %}
+            <p style="color: var(--muted-color);">No models in library yet.</p>
+        {% endif %}
+    </fieldset>
+</form>
+
+<!-- Comparison table -->
+{% if selected_models %}
+    <div id="comparison-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    {% for model in selected_models %}
+                        <th>{{ model.author }}/{{ model.name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Repo ID</strong></td>
+                    {% for model in selected_models %}
+                        <td><code>{{ model.repo_id }}</code></td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Format</strong></td>
+                    {% for model in selected_models %}
+                        <td>{{ model.format or 'Unknown' }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Quantization</strong></td>
+                    {% for model in selected_models %}
+                        <td>{{ model.quantization or '—' }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Size</strong></td>
+                    {% for model in selected_models %}
+                        <td>{{ format_bytes(model.size_bytes) }}</td>
+                    {% endfor %}
+                </tr>
+                <tr>
+                    <td><strong>Downloaded</strong></td>
+                    {% for model in selected_models %}
+                        <td>{% if model.downloaded_at %}{{ model.downloaded_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    {% if models %}
+        <p style="color: var(--muted-color); text-align: center; padding: 2rem;">
+            Select 2 or more models to see a comparison table.
+        </p>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

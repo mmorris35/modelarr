@@ -164,6 +164,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Include route routers
+    from modelarr.web.routes.compare import router as compare_router
     from modelarr.web.routes.dashboard import router as dashboard_router
     from modelarr.web.routes.downloads import router as downloads_router
     from modelarr.web.routes.library import router as library_router
@@ -176,6 +177,7 @@ def create_app() -> FastAPI:
     app.include_router(downloads_router)
     app.include_router(settings_router)
     app.include_router(search_router)
+    app.include_router(compare_router)
 
     # Error handlers
     @app.exception_handler(404)
