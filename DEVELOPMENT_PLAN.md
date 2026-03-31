@@ -116,26 +116,44 @@ flowchart TD
 ### Phase 6: Storage Management (COMPLETE)
 - [x] 6.1.1: Disk limits and auto-prune
 
-### Phase 7: Web Foundation
-- [ ] 7.1.1: Add web dependencies and create package structure
-- [ ] 7.1.2: FastAPI app with lifespan, deps, and base template
-- [ ] 7.1.3: Add `modelarr serve` CLI command
+### Phase 7: Web Foundation (COMPLETE)
+- [x] 7.1.1: Add web dependencies and create package structure
+- [x] 7.1.2: FastAPI app with lifespan, deps, and base template
+- [x] 7.1.3: Add `modelarr serve` CLI command
 
-### Phase 8: Web Core Pages
-- [ ] 8.1.1: Dashboard page
-- [ ] 8.1.2: Watchlist page with htmx CRUD
-- [ ] 8.1.3: Library page with sort/filter/delete
+### Phase 8: Web Core Pages (COMPLETE)
+- [x] 8.1.1: Dashboard page
+- [x] 8.1.2: Watchlist page with htmx CRUD
+- [x] 8.1.3: Library page with sort/filter/delete
 
-### Phase 9: Web Downloads & Settings
-- [ ] 9.1.1: Downloads page with active polling and manual trigger
-- [ ] 9.1.2: Settings page with config form and Telegram test
+### Phase 9: Web Downloads & Settings (COMPLETE)
+- [x] 9.1.1: Downloads page with active polling and manual trigger
+- [x] 9.1.2: Settings page with config form and Telegram test
 
-### Phase 10: Web Search & Polish
-- [ ] 10.1.1: HuggingFace search page with model detail
-- [ ] 10.1.2: Error handling, empty states, and systemd service update
+### Phase 10: Web Search & Polish (COMPLETE)
+- [x] 10.1.1: HuggingFace search page with model detail
+- [x] 10.1.2: Error handling, empty states, and systemd service update
 
-**Current**: Phase 7
-**Next**: 7.1.1
+### Phase 11: Ollama Integration
+- [ ] 11.1.1: Ollama client module
+- [ ] 11.1.2: CLI commands for Ollama
+- [ ] 11.1.3: Web UI "Push to Ollama" button and dashboard status
+
+### Phase 12: GitHub Actions CI
+- [ ] 12.1.1: CI workflow for pytest, ruff, mypy
+
+### Phase 13: Weekly Digest
+- [ ] 13.1.1: Digest notification module and scheduler job
+- [ ] 13.1.2: Digest settings in web UI
+
+### Phase 14: Docker Deployment
+- [ ] 14.1.1: Dockerfile, docker-compose, and documentation
+
+### Phase 15: Model Comparison View
+- [ ] 15.1.1: Comparison page in web UI
+
+**Current**: Phase 11
+**Next**: 11.1.1
 
 ---
 
@@ -1130,14 +1148,435 @@ modelarr = "modelarr.cli:app"
 
 ---
 
-## v2 Roadmap (Post Web UI)
+## Phase 11: Ollama Integration
 
-- **v2.1**: Weekly digest notification
-- **v2.2**: Quick-launch integration (mlx_lm.chat, ollama)
-- **v2.3**: Model comparison view
-- **v2.4**: RSS/Atom feed of new downloads
-- **v2.5**: Ollama modelfile auto-generation
-- **v2.6**: Docker/LXC deployment for Proxmox
+**Goal**: Push downloaded GGUF models to Ollama with auto-generated Modelfiles
+**Duration**: 1 day
+
+### Task 11.1: Ollama Client and UI
+
+**Subtask 11.1.1: Ollama Client Module (Single Session)**
+
+**Prerequisites**: Phase 10 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/11-1-ollama`
+
+**Deliverables**:
+- [ ] Create `src/modelarr/ollama.py` with `OllamaClient` class:
+  - `__init__(self, host: str = "http://localhost:11434")` — configurable Ollama API host
+  - `generate_modelfile(model: ModelRecord) -> str` — create Modelfile content:
+    ```
+    FROM /path/to/model.gguf
+    ```
+    Find the largest `.gguf` file in `model.local_path` to use as the FROM path
+  - `push_model(model: ModelRecord, model_name: str | None = None) -> bool`:
+    - Generate Modelfile content
+    - POST to `{host}/api/create` with `{"name": model_name, "modelfile": content}`
+    - `model_name` defaults to `modelarr/{author}-{name}` if not provided
+    - Return True on success, False on failure (never raises)
+  - `list_models(self) -> list[dict]` — GET `{host}/api/tags`, return list of model dicts
+  - `delete_model(self, name: str) -> bool` — DELETE `{host}/api/delete` with `{"name": name}`
+  - `is_connected(self) -> bool` — GET `{host}/api/tags`, return True if 200
+  - All HTTP calls via `httpx` with 10s timeout, graceful failure
+- [ ] Add `ollama_host` config key support in store (default: `http://localhost:11434`)
+- [ ] Create `tests/test_ollama.py` with mocked httpx calls:
+  - Test Modelfile generation (finds largest .gguf)
+  - Test push_model posts correct payload
+  - Test list_models parses response
+  - Test is_connected returns True/False
+  - Test graceful failure on connection error
+
+**Success Criteria**:
+- [ ] `generate_modelfile()` produces valid Modelfile with correct FROM path
+- [ ] `push_model()` posts to Ollama API and returns bool
+- [ ] `list_models()` returns parsed model list
+- [ ] `is_connected()` returns True when Ollama reachable, False otherwise
+- [ ] All tests pass
+- [ ] `grep -r "TODO\|FIXME" src/` returns no matches
+
+**Git**: `git add -A && git commit -m "feat(ollama): Ollama client module with Modelfile generation [11.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 11.1.2: CLI Commands for Ollama (Single Session)**
+
+**Prerequisites**: 11.1.1 complete
+
+**Deliverables**:
+- [ ] Add `ollama_app` Typer subcommand group to `src/modelarr/cli.py`:
+  - `modelarr ollama push <repo_id> [--name <ollama_name>]` — push a downloaded GGUF model to Ollama
+  - `modelarr ollama list` — show models currently loaded in Ollama
+  - `modelarr ollama status` — show Ollama connection status
+- [ ] Add `ollama_host` to the `modelarr init` setup wizard (optional, with default)
+- [ ] Create `tests/test_cli_ollama.py` with CliRunner tests
+
+**Success Criteria**:
+- [ ] `modelarr ollama push test-author/test-model` pushes to Ollama
+- [ ] `modelarr ollama list` shows Ollama models in Rich table
+- [ ] `modelarr ollama status` shows connected/disconnected
+- [ ] `modelarr --help` lists `ollama` command group
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(cli): Ollama push, list, and status commands [11.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 11.1.3: Web UI Push to Ollama Button and Dashboard Status (Single Session)**
+
+**Prerequisites**: 11.1.2 complete
+
+**Deliverables**:
+- [ ] Add "Push to Ollama" button on library page for models with format="gguf" and local_path set:
+  - Button uses `hx-post="/library/{repo_id}/ollama"` with htmx
+  - Route handler calls `OllamaClient.push_model()`, returns toast
+- [ ] Add route `POST /library/{repo_id:path}/ollama` to `src/modelarr/web/routes/library.py`
+- [ ] Add Ollama status card to dashboard:
+  - Shows connected/disconnected
+  - Shows model count if connected
+  - Links to Ollama models list
+- [ ] Add route `GET /ollama/status` to dashboard routes (htmx partial)
+- [ ] Add `ollama_host` field to settings page form
+- [ ] Create `tests/test_web_ollama.py`
+
+**Success Criteria**:
+- [ ] "Push to Ollama" button appears only for GGUF models with local_path
+- [ ] Clicking button pushes model and shows success/error toast
+- [ ] Dashboard shows Ollama connection status
+- [ ] Settings page allows configuring ollama_host
+- [ ] All tests pass
+- [ ] `uv run ruff check src/ tests/` passes
+- [ ] `uv run mypy src/` passes
+
+**Git**: `git add -A && git commit -m "feat(web): Push to Ollama button and dashboard status [11.1.3]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 11.1 Complete — Squash Merge
+- [ ] All subtasks (11.1.1, 11.1.2, 11.1.3) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] Type check passes: `uv run mypy src/`
+- [ ] Squash merge: `git checkout main && git merge --squash feature/11-1-ollama`
+- [ ] Commit: `git commit -m "feat: Ollama integration — push models, Modelfile generation, web UI"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/11-1-ollama`
+
+---
+
+## Phase 12: GitHub Actions CI
+
+**Goal**: Automated testing on push and PR
+**Duration**: Half day
+
+### Task 12.1: CI Workflow
+
+**Subtask 12.1.1: CI Workflow for pytest, ruff, mypy (Single Session)**
+
+**Prerequisites**: Phase 11 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/12-1-ci`
+
+**Deliverables**:
+- [ ] Create `.github/workflows/ci.yml` with:
+  ```yaml
+  name: CI
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          python-version: ["3.11", "3.12"]
+      steps:
+        - uses: actions/checkout@v4
+        - name: Install uv
+          uses: astral-sh/setup-uv@v4
+        - name: Set up Python ${{ matrix.python-version }}
+          run: uv python install ${{ matrix.python-version }}
+        - name: Install dependencies
+          run: uv sync
+        - name: Run ruff
+          run: uv run ruff check src/ tests/
+        - name: Run mypy
+          run: uv run mypy src/
+        - name: Run tests
+          run: uv run pytest --tb=short -q
+  ```
+- [ ] Verify workflow YAML is valid
+- [ ] Add CI badge to README.md:
+  ```markdown
+  [![CI](https://github.com/mmorris35/modelarr/actions/workflows/ci.yml/badge.svg)](https://github.com/mmorris35/modelarr/actions/workflows/ci.yml)
+  ```
+
+**Success Criteria**:
+- [ ] `.github/workflows/ci.yml` exists and is valid YAML
+- [ ] README has CI badge
+- [ ] After push, GitHub Actions runs and passes
+- [ ] All existing tests still pass locally
+
+**Git**: `git add -A && git commit -m "ci: add GitHub Actions workflow for pytest, ruff, mypy [12.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 12.1 Complete — Squash Merge
+- [ ] All subtasks (12.1.1) complete
+- [ ] Squash merge: `git checkout main && git merge --squash feature/12-1-ci`
+- [ ] Commit: `git commit -m "ci: GitHub Actions CI for pytest, ruff, mypy"`
+- [ ] Push: `git push origin main`
+- [ ] Verify CI runs green on GitHub
+- [ ] Delete branch: `git branch -d feature/12-1-ci`
+
+---
+
+## Phase 13: Weekly Digest
+
+**Goal**: Weekly Telegram summary of downloaded models
+**Duration**: Half day
+
+### Task 13.1: Digest Notification
+
+**Subtask 13.1.1: Digest Module and Scheduler Job (Single Session)**
+
+**Prerequisites**: Phase 12 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/13-1-digest`
+
+**Deliverables**:
+- [ ] Add `send_digest()` method to `src/modelarr/notifier.py`:
+  - Query `store.get_download_history()` for downloads completed in last 7 days
+  - Format Telegram message with:
+    - Total models downloaded this week
+    - Total size downloaded
+    - List of model names with format and size
+    - "No new models this week" if empty
+  - Send via existing `_send_message()` method
+- [ ] Add `digest_enabled` (default "false"), `digest_day` (default "monday"), `digest_hour` (default "9") config keys
+- [ ] Add weekly APScheduler CronTrigger job in `src/modelarr/web/app.py` lifespan:
+  - Only added if `digest_enabled` is "true"
+  - Runs on configured day/hour
+- [ ] Create `tests/test_digest.py`:
+  - Test digest message formatting with 0, 1, and multiple downloads
+  - Test digest sends via Telegram
+  - Test digest skips when not configured
+
+**Success Criteria**:
+- [ ] `send_digest()` formats and sends weekly summary
+- [ ] Digest only fires when `digest_enabled` is "true"
+- [ ] Empty weeks send "No new models" message
+- [ ] All tests pass
+
+**Git**: `git add -A && git commit -m "feat(notify): weekly digest notification [13.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+**Subtask 13.1.2: Digest Settings in Web UI (Single Session)**
+
+**Prerequisites**: 13.1.1 complete
+
+**Deliverables**:
+- [ ] Add digest fields to settings page (`src/modelarr/web/templates/settings.html`):
+  - `digest_enabled` checkbox
+  - `digest_day` dropdown (Monday-Sunday)
+  - `digest_hour` number input (0-23)
+- [ ] Update `GET /settings` and `POST /settings` routes to include digest config
+- [ ] Add "Send Test Digest" button alongside existing "Test Telegram" button
+- [ ] Add route `POST /settings/digest-test` that calls `send_digest()` immediately
+
+**Success Criteria**:
+- [ ] Digest settings appear on settings page
+- [ ] Save persists digest config
+- [ ] "Send Test Digest" sends a digest immediately
+- [ ] All tests pass
+- [ ] `grep -r "TODO\|FIXME" src/` returns no matches
+
+**Git**: `git add -A && git commit -m "feat(web): digest settings in web UI [13.1.2]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 13.1 Complete — Squash Merge
+- [ ] All subtasks (13.1.1, 13.1.2) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] Squash merge: `git checkout main && git merge --squash feature/13-1-digest`
+- [ ] Commit: `git commit -m "feat: weekly digest Telegram notification"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/13-1-digest`
+
+---
+
+## Phase 14: Docker Deployment
+
+**Goal**: Single-command deployment via Docker
+**Duration**: Half day
+
+### Task 14.1: Docker Setup
+
+**Subtask 14.1.1: Dockerfile, docker-compose, and Documentation (Single Session)**
+
+**Prerequisites**: Phase 13 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/14-1-docker`
+
+**Deliverables**:
+- [ ] Create `Dockerfile`:
+  ```dockerfile
+  FROM python:3.12-slim
+
+  WORKDIR /app
+
+  # Install uv
+  COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+  # Copy project files
+  COPY pyproject.toml uv.lock ./
+  COPY src/ src/
+
+  # Install dependencies (no dev)
+  RUN uv sync --no-dev --no-editable
+
+  # Expose web UI port
+  EXPOSE 8585
+
+  # Run modelarr serve
+  CMD ["uv", "run", "modelarr", "serve", "--host", "0.0.0.0", "--port", "8585"]
+  ```
+- [ ] Create `docker-compose.yml`:
+  ```yaml
+  services:
+    modelarr:
+      build: .
+      ports:
+        - "8585:8585"
+      volumes:
+        - modelarr-config:/root/.config/modelarr
+        - ${LIBRARY_PATH:-./library}:/models
+      environment:
+        - MODELARR_LIBRARY_PATH=/models
+      restart: unless-stopped
+  volumes:
+    modelarr-config:
+  ```
+- [ ] Create `.dockerignore`:
+  ```
+  .git
+  .venv
+  __pycache__
+  *.pyc
+  .ruff_cache
+  .pytest_cache
+  tests/
+  assets/
+  ```
+- [ ] Verify `docker build -t modelarr .` succeeds
+- [ ] Verify `docker run --rm modelarr modelarr --version` prints `0.2.0`
+- [ ] Update README.md with Docker deployment section:
+  ```bash
+  docker compose up -d
+  # or
+  docker run -d -p 8585:8585 -v modelarr-config:/root/.config/modelarr -v /path/to/models:/models modelarr
+  ```
+
+**Success Criteria**:
+- [ ] `docker build` succeeds with no errors
+- [ ] Container starts and `modelarr serve` runs on port 8585
+- [ ] Config persists across container restarts via volume
+- [ ] Models directory is writable via volume mount
+- [ ] README documents Docker deployment
+- [ ] All existing tests still pass locally
+
+**Git**: `git add -A && git commit -m "feat(docker): Dockerfile, docker-compose, and documentation [14.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 14.1 Complete — Squash Merge
+- [ ] All subtasks (14.1.1) complete
+- [ ] Docker build succeeds
+- [ ] Container runs modelarr serve
+- [ ] Squash merge: `git checkout main && git merge --squash feature/14-1-docker`
+- [ ] Commit: `git commit -m "feat: Docker deployment with compose and volume mounts"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/14-1-docker`
+
+---
+
+## Phase 15: Model Comparison View
+
+**Goal**: Side-by-side model comparison in web UI
+**Duration**: Half day
+
+### Task 15.1: Comparison Page
+
+**Subtask 15.1.1: Model Comparison Page in Web UI (Single Session)**
+
+**Prerequisites**: Phase 14 complete
+
+**Git**: `git checkout main && git pull && git checkout -b feature/15-1-compare`
+
+**Deliverables**:
+- [ ] Create `src/modelarr/web/routes/compare.py` with:
+  - `GET /compare` — renders comparison page
+  - `GET /compare?ids=1,2,3` — renders comparison table for selected model IDs
+- [ ] Create `src/modelarr/web/templates/compare.html`:
+  - Model selector: checkboxes from library, "Compare Selected" button
+  - Comparison table (when models selected):
+    - Rows: Repo ID, Author, Format, Quantization, Size, File Count, Downloaded Date
+    - Columns: one per selected model (2-4 models)
+  - htmx: checkbox selection swaps comparison table
+- [ ] Register compare router in `src/modelarr/web/app.py`
+- [ ] Add "Compare" link to navigation in `src/modelarr/web/templates/base.html`
+- [ ] Create `tests/test_web_compare.py`
+
+**Success Criteria**:
+- [ ] `/compare` page loads with model selector
+- [ ] Selecting 2+ models shows side-by-side comparison table
+- [ ] Comparison shows all key attributes
+- [ ] All tests pass
+- [ ] `uv run ruff check src/ tests/` passes
+- [ ] `uv run mypy src/` passes
+- [ ] `grep -r "TODO\|FIXME" src/` returns no matches
+
+**Git**: `git add -A && git commit -m "feat(web): model comparison view [15.1.1]"`
+
+**Completion Notes**: _(filled by executor)_
+
+---
+
+### Task 15.1 Complete — Squash Merge
+- [ ] All subtasks (15.1.1) complete
+- [ ] All tests pass: `uv run pytest`
+- [ ] Lint passes: `uv run ruff check src/ tests/`
+- [ ] Type check passes: `uv run mypy src/`
+- [ ] Squash merge: `git checkout main && git merge --squash feature/15-1-compare`
+- [ ] Commit: `git commit -m "feat: model comparison view in web UI"`
+- [ ] Push: `git push origin main`
+- [ ] Delete branch: `git branch -d feature/15-1-compare`
+
+---
+
+## v3 Roadmap (Post v2)
+
+- **v3.1**: RSS/Atom feed of new downloads
+- **v3.2**: Quick-launch integration with mlx_lm.chat for MLX models
+- **v3.3**: PyPI publish for `pip install modelarr`
+- **v3.4**: Prometheus metrics endpoint for monitoring
 
 ---
 

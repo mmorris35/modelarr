@@ -4,7 +4,7 @@
 
 - **Project Name**: modelarr
 - **Project Type**: web_app
-- **Primary Goal**: Radarr/Sonarr-style tool that monitors HuggingFace for new LLM model releases matching a watchlist and auto-downloads them to a local library, with a web UI dashboard for management
+- **Primary Goal**: Radarr/Sonarr-style tool that monitors HuggingFace for new LLM model releases matching a watchlist and auto-downloads them to a local library, with a web UI dashboard, Ollama integration, and Docker deployment
 - **Target Users**: AI developers and enthusiasts who want to maintain a local collection of LLM models, MSP/IT professionals running local inference on Apple Silicon, Anyone building a sovereign AI stack who wants models ready before they need them, Homelab users who want a Radarr-like web interface for managing LLM models
 - **Timeline**: 2 weeks
 - **Team Size**: 1
@@ -15,7 +15,7 @@
 
 - Watchlist management: follow specific models, authors, search queries, and model families with filters (size, quantization, format)
 - HuggingFace API monitoring: poll for new models/versions matching watchlist on configurable interval
-- Auto-download via huggingface_hub library with resume support for interrupted downloads
+- Auto-download via streaming HTTP with resume support — 1MB chunks, safe on low-RAM hardware
 - Local library management: organize models by format/family/quantization, track disk usage
 - Notification via Telegram when new models are downloaded
 - CLI interface for watchlist CRUD, library browsing, manual downloads, and status checks
@@ -23,17 +23,22 @@
 - SQLite persistence for watchlist, download history, and library metadata
 - First-run setup wizard (modelarr init) for interactive configuration
 - Web UI dashboard: FastAPI + htmx + Pico CSS dark theme, single process with embedded monitor
-- Web UI pages: Dashboard (stats, active downloads, monitor status), Watchlist (CRUD with htmx), Library (sortable/filterable model table), Downloads (active progress polling, history, manual trigger), Settings (config form, Telegram test), HuggingFace Search (search, model detail, add to watchlist or download)
+- Web UI pages: Dashboard, Watchlist CRUD, Library browser, Downloads with live progress, Settings, HuggingFace Search
 - Web serve command (modelarr serve) that runs both web UI and monitor scheduler in one process
+- Backfill mode to download all matching models on initial setup
+- Configurable download safety: max_download_workers, min_free_memory_mb
+- Ollama integration: auto-generate Modelfile for downloaded GGUF models, push to Ollama API via 'Push to Ollama' button in web UI and CLI command
+- Weekly digest: Telegram summary of models downloaded in the past week
+- GitHub Actions CI: automated pytest, ruff, mypy on push and PR
+- Docker deployment: Dockerfile and docker-compose.yml for single-command deployment, with volume mounts for library and config
+- Model comparison view: side-by-side specs, format, quantization, size across downloaded models in web UI
 
 ### Nice-to-Have Features (v2)
 
-- Weekly digest notification summarizing new releases in watchlist
-- Quick-launch integration with mlx_lm.chat or ollama for downloaded models
-- Model comparison view (specs, benchmarks, size across downloaded models)
 - RSS/Atom feed generation of new downloads
-- Ollama modelfile auto-generation for downloaded GGUF models
-- Docker/LXC deployment option for headless operation on Proxmox
+- Quick-launch integration with mlx_lm.chat for MLX models
+- PyPI publish for pip install modelarr
+- Prometheus metrics endpoint for monitoring
 
 ## Technical Constraints
 
@@ -41,7 +46,7 @@
 
 - Python 3.11+
 - SQLite
-- huggingface_hub
+- huggingface_hub (for API metadata only, not downloads)
 - Typer for CLI
 - APScheduler for polling
 - FastAPI for web UI
@@ -49,7 +54,8 @@
 - htmx for interactive UI (vendored, no build step)
 - Pico CSS for dark theme styling
 - uvicorn as ASGI server
-- httpx for HTTP client (Telegram, HuggingFace)
+- httpx for HTTP client (Telegram, HuggingFace, Ollama API, streaming downloads)
+- GitHub Actions for CI
 
 ### Cannot Use
 
@@ -63,13 +69,15 @@
 - Must run on Linux (Ubuntu, Proxmox LXC) and macOS (Apple Silicon)
 - Must run on resource-constrained hardware (Core2Duo, 1.7GB RAM) alongside other services
 - No cloud dependencies beyond HuggingFace API for model discovery
-- Must handle large downloads (10-100GB models) gracefully with resume
+- Must handle large downloads (10-100GB models) gracefully with resume via streaming HTTP
 - Respect HuggingFace API rate limits
 - Telegram notifications via direct Bot API
 - Web UI must be server-rendered with htmx — no SPA, no JS build step
 - Single process serves both web UI and monitor scheduler via FastAPI lifespan
 - SQLite busy_timeout needed for concurrent web+scheduler writes
 - Total memory budget ~60MB for web+monitor process
+- Ollama API is HTTP at configurable host:port (default localhost:11434)
+- Docker image must be small — python:3.12-slim base, no CUDA or ML deps
 
 ## Success Criteria
 
