@@ -21,6 +21,9 @@
     {% endif %}
 </div>
 
+<!-- Toast container -->
+<div id="toast-container"></div>
+
 <!-- Sort controls -->
 <div style="margin-bottom: 1rem;">
     <label for="sort-select">Sort by:</label>
@@ -67,6 +70,9 @@
             <td>{{ format_bytes(model.size_bytes) }}</td>
             <td>{{ model.downloaded_at.strftime("%Y-%m-%d %H:%M") if model.downloaded_at else "—" }}</td>
             <td>
+                {% if model.format == "gguf" and model.local_path %}
+                <button hx-post="/library/{{ model.repo_id }}/ollama" hx-target="#toast-container" hx-swap="beforeend" style="padding: 0.5rem 1rem;">Push to Ollama</button>
+                {% endif %}
                 <button hx-delete="/library/{{ model.repo_id }}" hx-confirm="Delete {{ model.repo_id }}?" class="secondary" style="padding: 0.5rem 1rem;">Delete</button>
             </td>
         </tr>

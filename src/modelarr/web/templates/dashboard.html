@@ -41,6 +41,12 @@
         <small>{{ max_storage_gb }} GB limit</small>
     </div>
     {% endif %}
+
+    <!-- Ollama Status -->
+    <div class="stat-card" hx-get="/ollama/status" hx-trigger="load" hx-swap="innerHTML">
+        <div class="stat-label">Ollama</div>
+        <div class="stat-value">Checking...</div>
+    </div>
 </div>
 
 <!-- Quick Actions -->

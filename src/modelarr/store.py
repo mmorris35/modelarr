@@ -619,26 +619,41 @@ class ModelarrStore:
 
         return downloads
 
-    def get_download_history(self, limit: int = 100) -> list[DownloadRecord]:
+    def get_download_history(
+        self, limit: int = 100, since: datetime | None = None
+    ) -> list[DownloadRecord]:
         """Get download history (completed and failed downloads).
 
         Args:
             limit: Maximum number of records to return
+            since: If provided, only return downloads completed after this time
 
         Returns:
             List of completed/failed DownloadRecord objects, most recent first
         """
         conn = self._get_conn()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT * FROM downloads
-            WHERE status IN ('complete', 'failed')
-            ORDER BY completed_at DESC
-            LIMIT ?
-            """,
-            (limit,),
-        )
+        if since:
+            cursor.execute(
+                """
+                SELECT * FROM downloads
+                WHERE status IN ('complete', 'failed')
+                AND completed_at >= ?
+                ORDER BY completed_at DESC
+                LIMIT ?
+                """,
+                (since.isoformat(), limit),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT * FROM downloads
+                WHERE status IN ('complete', 'failed')
+                ORDER BY completed_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
         rows = cursor.fetchall()
         conn.close()
 

@@ -108,8 +108,11 @@ class TelegramNotifier:
             True if sent successfully, False otherwise (never raises)
         """
         try:
-            # Get download history for the past 7 days
-            downloads = store.get_download_history(limit=1000)
+            from datetime import UTC, datetime, timedelta
+
+            # Get downloads completed in the past 7 days
+            since = datetime.now(UTC) - timedelta(days=7)
+            downloads = store.get_download_history(limit=1000, since=since)
             completed = [
                 d for d in downloads
                 if d.status == "complete" and d.completed_at

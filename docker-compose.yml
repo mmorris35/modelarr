@@ -6,8 +6,6 @@ services:
     volumes:
       - modelarr-config:/root/.config/modelarr
       - ${LIBRARY_PATH:-./library}:/models
-    environment:
-      - MODELARR_LIBRARY_PATH=/models
     restart: unless-stopped
 volumes:
   modelarr-config:
