@@ -1,5 +1,7 @@
 """Dashboard routes for modelarr web UI."""
 
+import contextlib
+import threading
 from datetime import UTC, datetime
 from typing import Any
 
@@ -169,16 +171,30 @@ async def dashboard_backfill(
     """Download all matching models from watchlist (backfill)."""
     try:
         monitor = _build_monitor(store)
-        results = monitor.run_once(backfill=True)
 
-        if len(results) > 0:
-            msg = f"<strong>Backfill started!</strong> Queued {len(results)} model(s)."
-            return HTMLResponse(_toast_html(msg, is_error=False))
+        # Find matches without downloading (just the match phase)
+        matches = monitor.matcher.find_new_models(store, backfill=True)
 
-        return HTMLResponse(
-            '<div class="toast"><strong>Backfill complete.</strong>'
-            " All matching models already downloaded.</div>"
+        if not matches:
+            return HTMLResponse(
+                '<div class="toast"><strong>Backfill complete.</strong>'
+                " All matching models already downloaded.</div>"
+            )
+
+        # Dispatch downloads to background thread — one at a time
+        def run_backfill() -> None:
+            for watch, model_info in matches:
+                with contextlib.suppress(Exception):
+                    monitor.downloader.download_model(model_info, watch)
+
+        threading.Thread(target=run_backfill, daemon=True).start()
+
+        msg = (
+            f"<strong>Backfill started!</strong> "
+            f"Downloading {len(matches)} model(s) in background. "
+            f"Check the <a href='/downloads'>Downloads</a> page for progress."
         )
+        return HTMLResponse(_toast_html(msg, is_error=False))
 
     except Exception as e:
         return HTMLResponse(_toast_html(f"<strong>Error:</strong> {e}", is_error=True))
