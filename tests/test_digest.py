@@ -112,6 +112,51 @@ def test_send_digest_exception(test_store: ModelarrStore, test_notifier):
         assert result is False
 
 
+def test_send_digest_excludes_old_downloads(test_store: ModelarrStore, test_notifier):
+    """Test digest only includes downloads from the past 7 days."""
+    from datetime import UTC, timedelta
+
+    # Create a model
+    test_store.upsert_model(
+        "test/old-model", "test", "old-model", format_="gguf", size_bytes=500000
+    )
+    test_store.upsert_model(
+        "test/new-model", "test", "new-model", format_="gguf", size_bytes=600000
+    )
+
+    old_model = test_store.get_model_by_repo("test/old-model")
+    new_model = test_store.get_model_by_repo("test/new-model")
+
+    # Create an old download (10 days ago)
+    dl_old = test_store.create_download(old_model.id, status="downloading", total_bytes=500000)
+    test_store.update_download(
+        dl_old.id,
+        status="complete",
+        completed_at=datetime.now(UTC) - timedelta(days=10),
+    )
+
+    # Create a recent download (1 day ago)
+    dl_new = test_store.create_download(new_model.id, status="downloading", total_bytes=600000)
+    test_store.update_download(
+        dl_new.id,
+        status="complete",
+        completed_at=datetime.now(UTC) - timedelta(days=1),
+    )
+
+    with patch("modelarr.notifier.httpx.post") as mock_post:
+        mock_post.return_value.status_code = 200
+
+        result = test_notifier.send_digest(test_store)
+
+        assert result is True
+        call_args = mock_post.call_args
+        message = call_args[1]["json"]["text"]
+        # Should include only the recent download, not the old one
+        assert "1 models downloaded" in message
+        assert "new-model" in message
+        assert "old-model" not in message
+
+
 def test_digest_config_keys(test_store: ModelarrStore):
     """Test digest configuration keys can be stored."""
     test_store.set_config("digest_enabled", "true")

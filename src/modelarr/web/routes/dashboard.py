@@ -193,8 +193,10 @@ async def ollama_status(
 
     if not ollama_host:
         return HTMLResponse(
-            '<div class="ollama-status disconnected">'
-            '<strong>Ollama:</strong> Not configured</div>'
+            '<div class="stat-label">Ollama</div>'
+            '<div class="stat-value" style="font-size: 1.2rem;">'
+            'Not configured</div>'
+            '<small><a href="/settings">Configure</a></small>'
         )
 
     client = OllamaClient(host=ollama_host)
@@ -202,11 +204,17 @@ async def ollama_status(
     if client.is_connected():
         models = client.list_models()
         return HTMLResponse(
-            f'<div class="ollama-status connected">'
-            f'<strong>Ollama:</strong> Connected ({len(models)} models)</div>'
+            '<div class="stat-label">Ollama</div>'
+            f'<div class="stat-value" style="font-size: 1.2rem;">'
+            f'<span style="color: var(--form-element-valid-border-color);">'
+            f'Connected</span></div>'
+            f'<small>{len(models)} model(s) loaded</small>'
         )
     else:
         return HTMLResponse(
-            '<div class="ollama-status disconnected">'
-            '<strong>Ollama:</strong> Disconnected</div>'
+            '<div class="stat-label">Ollama</div>'
+            '<div class="stat-value" style="font-size: 1.2rem;">'
+            '<span style="color: var(--form-element-invalid-border-color);">'
+            'Disconnected</span></div>'
+            f'<small>{ollama_host}</small>'
         )

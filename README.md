@@ -231,6 +231,10 @@ modelarr config show
 | `huggingface_token` | HuggingFace API token for private/gated models | _(none)_ |
 | `telegram_bot_token` | Telegram Bot API token | _(none)_ |
 | `telegram_chat_id` | Telegram chat ID for notifications | _(none)_ |
+| `ollama_host` | Ollama API endpoint for model push | _(none)_ |
+| `digest_enabled` | Enable weekly Telegram digest | `false` |
+| `digest_day` | Day of week for digest (monday-sunday) | `monday` |
+| `digest_hour` | Hour of day for digest (0-23) | `9` |
 
 All config stored in SQLite at `~/.config/modelarr/modelarr.db`. Edit via CLI, web UI settings page, or the `modelarr init` setup wizard.
 
@@ -352,7 +356,7 @@ The container exposes the web UI on port 8585 and persists configuration in a na
 # Install all dependencies (including dev tools)
 uv sync
 
-# Run tests (244 tests)
+# Run tests
 uv run pytest
 
 # Lint
