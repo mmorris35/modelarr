@@ -103,6 +103,18 @@ class WatchlistMatcher:
             return []
 
     @staticmethod
+    def _infer_format_from_name(repo_id: str) -> str | None:
+        """Infer model format from repo name when API doesn't return it."""
+        name_lower = repo_id.lower()
+        if "gguf" in name_lower:
+            return "gguf"
+        if "mlx" in name_lower:
+            return "mlx"
+        if "safetensors" in name_lower:
+            return "safetensors"
+        return None
+
+    @staticmethod
     def apply_filters(
         models: list[ModelInfo], filters: WatchlistFilters
     ) -> list[ModelInfo]:
@@ -130,13 +142,17 @@ class WatchlistMatcher:
                 if m.size_bytes is not None and m.size_bytes <= filters.max_size_b
             ]
 
-        # Filter by format
+        # Filter by format — infer from repo name if API didn't detect it
         if filters.formats:
             formats_lower = [f.lower() for f in filters.formats]
-            filtered = [
-                m for m in filtered
-                if m.format and m.format.lower() in formats_lower
-            ]
+            result = []
+            for m in filtered:
+                fmt = m.format or WatchlistMatcher._infer_format_from_name(m.repo_id)
+                if fmt and fmt.lower() in formats_lower:
+                    if not m.format:
+                        m.format = fmt
+                    result.append(m)
+            filtered = result
 
         # Filter by quantization
         if filters.quantizations:
