@@ -186,6 +186,19 @@ class DownloadManager:
             local_path = self.library_path / model.author / model.name
             local_path.mkdir(parents=True, exist_ok=True)
 
+            # If file list is empty, fetch it from HuggingFace
+            if not model.files:
+                from modelarr.hf_client import HFClient
+
+                hf = HFClient(token=self.hf_token)
+                model.files = hf.get_repo_files(model.repo_id)
+
+            if not model.files:
+                raise RuntimeError(
+                    f"No files found for {model.repo_id} — "
+                    f"cannot download a model with no file listing"
+                )
+
             # Download files one at a time for low memory footprint
             min_free_mb = int(
                 self.store.get_config("min_free_memory_mb", "200") or "200"
@@ -235,6 +248,16 @@ class DownloadManager:
 
             # Calculate actual downloaded size
             total_size = self._calculate_directory_size(local_path)
+
+            # Safety net: refuse to mark as complete if nothing downloaded
+            if total_size == 0:
+                import shutil
+
+                shutil.rmtree(local_path, ignore_errors=True)
+                raise RuntimeError(
+                    f"Download produced 0 bytes for {model.repo_id} — "
+                    f"marking as failed"
+                )
 
             # Update download record to complete
             completed = self.store.update_download(
