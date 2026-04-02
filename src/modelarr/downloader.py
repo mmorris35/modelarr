@@ -141,13 +141,21 @@ class DownloadManager:
             size_bytes=model.size_bytes,
         )
 
-        # Create download record with queued status
-        download = self.store.create_download(
-            model_id=model_record.id,
-            status="queued",
-            started_at=datetime.now(UTC),
-            total_bytes=model.size_bytes,
-        )
+        # Reuse existing queued download record if one exists (from backfill),
+        # otherwise create a new one
+        existing_queued = [
+            d for d in self.store.get_active_downloads()
+            if d.model_id == model_record.id and d.status == "queued"
+        ]
+        if existing_queued:
+            download = existing_queued[0]
+        else:
+            download = self.store.create_download(
+                model_id=model_record.id,
+                status="queued",
+                started_at=datetime.now(UTC),
+                total_bytes=model.size_bytes,
+            )
 
         try:
             # Check storage limits if StorageManager is configured

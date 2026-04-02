@@ -181,9 +181,31 @@ async def dashboard_backfill(
                 " All matching models already downloaded.</div>"
             )
 
-        # Dispatch downloads to background thread — one at a time
+        # Create all model + download records upfront as "queued"
+        # so they appear on the Downloads page immediately
+        from datetime import UTC, datetime
+
+        queued_items: list[tuple[Any, Any, int]] = []
+        for watch, model_info in matches:
+            model_record = store.upsert_model(
+                repo_id=model_info.repo_id,
+                author=model_info.author,
+                name=model_info.name,
+                format_=model_info.format,
+                quantization=model_info.quantization,
+                size_bytes=model_info.size_bytes,
+            )
+            dl = store.create_download(
+                model_id=model_record.id,
+                status="queued",
+                started_at=datetime.now(UTC),
+                total_bytes=model_info.size_bytes,
+            )
+            queued_items.append((watch, model_info, dl.id))
+
+        # Process queue in background — one at a time
         def run_backfill() -> None:
-            for watch, model_info in matches:
+            for watch, model_info, _dl_id in queued_items:
                 with contextlib.suppress(Exception):
                     monitor.downloader.download_model(model_info, watch)
 
@@ -191,7 +213,7 @@ async def dashboard_backfill(
 
         msg = (
             f"<strong>Backfill started!</strong> "
-            f"Downloading {len(matches)} model(s) in background. "
+            f"Queued {len(queued_items)} model(s). "
             f"Check the <a href='/downloads'>Downloads</a> page for progress."
         )
         return HTMLResponse(_toast_html(msg, is_error=False))
