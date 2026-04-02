@@ -1,6 +1,6 @@
 """Downloads routes for modelarr web UI."""
 
-import threading
+import multiprocessing
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
@@ -112,13 +112,30 @@ async def manual_download(
             msg = "<strong>Error:</strong> repo_id is required"
             return _toast_html(msg, is_error=True)
 
-        # Fetch model info
-        model_info = hf_client.get_model_info(repo_id)
+        # Dispatch download to subprocess — own GIL, can't block web UI
+        from modelarr.db import get_db_path
 
-        # Dispatch download to background thread (non-blocking)
-        threading.Thread(
-            target=downloader.download_model,
-            args=(model_info,),
+        def _download_worker(db_path_str: str, repo: str) -> None:
+            from pathlib import Path
+
+            from modelarr.downloader import DownloadManager
+            from modelarr.hf_client import HFClient as HFC
+            from modelarr.store import ModelarrStore as MS
+
+            s = MS(Path(db_path_str))
+            hfc = HFC(token=s.get_config("huggingface_token"))
+            lp = s.get_config("library_path")
+            dm = DownloadManager(
+                store=s,
+                library_path=Path(lp) if lp else Path.home() / ".modelarr" / "library",
+                hf_token=s.get_config("huggingface_token"),
+            )
+            info = hfc.get_model_info(repo)
+            dm.download_model(info)
+
+        multiprocessing.Process(
+            target=_download_worker,
+            args=(str(get_db_path()), repo_id),
             daemon=True,
         ).start()
 

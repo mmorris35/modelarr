@@ -1,7 +1,7 @@
 """Dashboard routes for modelarr web UI."""
 
 import contextlib
-import threading
+import multiprocessing
 from datetime import UTC, datetime
 from typing import Any
 
@@ -55,6 +55,61 @@ def _toast_html(message: str, is_error: bool = False) -> str:
         f'<div class="toast" style="background-color: {color}; color: {text_color};">'
         f"{message}</div>"
     )
+
+
+def _backfill_worker(db_path: str) -> None:
+    """Run backfill in a subprocess — separate GIL, can't block web server."""
+    import time
+    from datetime import UTC, datetime
+    from pathlib import Path
+
+    from modelarr.downloader import DownloadManager
+    from modelarr.hf_client import HFClient
+    from modelarr.matcher import WatchlistMatcher
+    from modelarr.store import ModelarrStore
+
+    store = ModelarrStore(Path(db_path))
+    hf_client = HFClient(token=store.get_config("huggingface_token"))
+    matcher = WatchlistMatcher(hf_client)
+
+    library_path_str = store.get_config("library_path")
+    library_path = (
+        Path(library_path_str) if library_path_str
+        else Path.home() / ".modelarr" / "library"
+    )
+    downloader = DownloadManager(
+        store=store,
+        library_path=library_path,
+        hf_token=store.get_config("huggingface_token"),
+    )
+
+    # Phase 1: Find matches
+    matches = matcher.find_new_models(store, backfill=True)
+
+    # Phase 2: Create queued records for UI visibility
+    queued = []
+    for watch, model_info in matches:
+        model_record = store.upsert_model(
+            repo_id=model_info.repo_id,
+            author=model_info.author,
+            name=model_info.name,
+            format_=model_info.format,
+            quantization=model_info.quantization,
+            size_bytes=model_info.size_bytes,
+        )
+        store.create_download(
+            model_id=model_record.id,
+            status="queued",
+            started_at=datetime.now(UTC),
+            total_bytes=model_info.size_bytes,
+        )
+        queued.append((watch, model_info))
+        time.sleep(0.05)
+
+    # Phase 3: Download one at a time
+    for watch, model_info in queued:
+        with contextlib.suppress(Exception):
+            downloader.download_model(model_info, watch)
 
 
 router = APIRouter(default_response_class=HTMLResponse)
@@ -170,44 +225,18 @@ async def dashboard_backfill(
 ):
     """Download all matching models from watchlist (backfill)."""
     try:
-        monitor = _build_monitor(store)
+        # Run backfill in a subprocess so it doesn't block the web
+        # server's event loop via the GIL. The subprocess rebuilds
+        # all objects from the DB path.
+        from modelarr.db import get_db_path
 
-        # Dispatch entire backfill to background — matching, queueing,
-        # and downloading all happen off the request thread so the UI
-        # returns immediately
-        def run_backfill() -> None:
-            import time
-            from datetime import UTC, datetime
-
-            matches = monitor.matcher.find_new_models(
-                monitor.store, backfill=True
-            )
-            # Create all queued records upfront for visibility
-            queued = []
-            for watch, model_info in matches:
-                model_record = monitor.store.upsert_model(
-                    repo_id=model_info.repo_id,
-                    author=model_info.author,
-                    name=model_info.name,
-                    format_=model_info.format,
-                    quantization=model_info.quantization,
-                    size_bytes=model_info.size_bytes,
-                )
-                monitor.store.create_download(
-                    model_id=model_record.id,
-                    status="queued",
-                    started_at=datetime.now(UTC),
-                    total_bytes=model_info.size_bytes,
-                )
-                queued.append((watch, model_info))
-                time.sleep(0.1)  # Yield DB lock between inserts
-
-            # Download one at a time
-            for watch, model_info in queued:
-                with contextlib.suppress(Exception):
-                    monitor.downloader.download_model(model_info, watch)
-
-        threading.Thread(target=run_backfill, daemon=True).start()
+        db_path = str(get_db_path())
+        proc = multiprocessing.Process(
+            target=_backfill_worker,
+            args=(db_path,),
+            daemon=True,
+        )
+        proc.start()
 
         msg = (
             "<strong>Backfill started!</strong> "
