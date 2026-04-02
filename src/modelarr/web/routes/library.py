@@ -1,5 +1,6 @@
 """Library routes for modelarr web UI."""
 
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -33,7 +34,13 @@ async def library_page(
     elif sort == "name":
         models.sort(key=lambda m: m.name)
     else:  # date (default)
-        models.sort(key=lambda m: m.downloaded_at or m.id, reverse=True)
+        def _sort_date(m):  # type: ignore[no-untyped-def]
+            dt = m.downloaded_at
+            if dt is None:
+                return datetime.min.replace(tzinfo=UTC)
+            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+        models.sort(key=_sort_date, reverse=True)
 
     total_size = downloader.get_library_size()
     max_storage_gb = store.get_config("max_storage_gb")
