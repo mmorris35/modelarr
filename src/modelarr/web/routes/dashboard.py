@@ -172,49 +172,45 @@ async def dashboard_backfill(
     try:
         monitor = _build_monitor(store)
 
-        # Find matches without downloading (just the match phase)
-        matches = monitor.matcher.find_new_models(store, backfill=True)
-
-        if not matches:
-            return HTMLResponse(
-                '<div class="toast"><strong>Backfill complete.</strong>'
-                " All matching models already downloaded.</div>"
-            )
-
-        # Create all model + download records upfront as "queued"
-        # so they appear on the Downloads page immediately
-        from datetime import UTC, datetime
-
-        queued_items: list[tuple[Any, Any, int]] = []
-        for watch, model_info in matches:
-            model_record = store.upsert_model(
-                repo_id=model_info.repo_id,
-                author=model_info.author,
-                name=model_info.name,
-                format_=model_info.format,
-                quantization=model_info.quantization,
-                size_bytes=model_info.size_bytes,
-            )
-            dl = store.create_download(
-                model_id=model_record.id,
-                status="queued",
-                started_at=datetime.now(UTC),
-                total_bytes=model_info.size_bytes,
-            )
-            queued_items.append((watch, model_info, dl.id))
-
-        # Process queue in background — one at a time
+        # Dispatch entire backfill to background — matching, queueing,
+        # and downloading all happen off the request thread so the UI
+        # returns immediately
         def run_backfill() -> None:
-            for watch, model_info, _dl_id in queued_items:
+            from datetime import UTC, datetime
+
+            matches = monitor.matcher.find_new_models(
+                monitor.store, backfill=True
+            )
+            # Create all queued records upfront for visibility
+            queued = []
+            for watch, model_info in matches:
+                model_record = monitor.store.upsert_model(
+                    repo_id=model_info.repo_id,
+                    author=model_info.author,
+                    name=model_info.name,
+                    format_=model_info.format,
+                    quantization=model_info.quantization,
+                    size_bytes=model_info.size_bytes,
+                )
+                monitor.store.create_download(
+                    model_id=model_record.id,
+                    status="queued",
+                    started_at=datetime.now(UTC),
+                    total_bytes=model_info.size_bytes,
+                )
+                queued.append((watch, model_info))
+
+            # Download one at a time
+            for watch, model_info in queued:
                 with contextlib.suppress(Exception):
                     monitor.downloader.download_model(model_info, watch)
 
         threading.Thread(target=run_backfill, daemon=True).start()
 
         msg = (
-            f"<strong>Backfill started!</strong> "
-            f"Queued {len(queued_items)} model(s). "
-            f"Check the <a href='/downloads'>Downloads</a> page for progress."
+            "<strong>Backfill started!</strong> "
+            "Scanning watches and queuing downloads in background. "
+            "Check the <a href='/downloads'>Downloads</a> page for progress."
         )
         return HTMLResponse(_toast_html(msg, is_error=False))
 
