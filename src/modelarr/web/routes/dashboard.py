@@ -176,6 +176,7 @@ async def dashboard_backfill(
         # and downloading all happen off the request thread so the UI
         # returns immediately
         def run_backfill() -> None:
+            import time
             from datetime import UTC, datetime
 
             matches = monitor.matcher.find_new_models(
@@ -199,6 +200,7 @@ async def dashboard_backfill(
                     total_bytes=model_info.size_bytes,
                 )
                 queued.append((watch, model_info))
+                time.sleep(0.1)  # Yield DB lock between inserts
 
             # Download one at a time
             for watch, model_info in queued:
